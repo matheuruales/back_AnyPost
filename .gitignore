@@ -1,0 +1,112 @@
+# Project-specific files
+HELP.md
+
+# ---------------------
+# Build / output dirs
+# ---------------------
+# Maven/Gradle build output
+target/
+build/
+out/
+
+# Keep the maven wrapper jar/properties tracked (recommended)
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# ---------------------
+# IDEs / editors
+# ---------------------
+# IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Eclipse / STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+
+# ---------------------
+# OS files
+# ---------------------
+.DS_Store
+Thumbs.db
+
+# ---------------------
+# Logs, temp, and caches
+# ---------------------
+*.log
+logs/
+*.tmp
+*.temp
+
+# Gradle cache (if present)
+/.gradle/
+
+# Node modules (in case front-end is added)
+node_modules/
+
+# ---------------------
+# Compiled / packaged
+# ---------------------
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+
+# ---------------------
+# Security / environment
+# ---------------------
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*
+*.env
+.envrc
+# Track shared examples/templates
+!.env.example
+*.jks
+*.keystore
+*.pem
+*.key
+*.crt
+
+# ---------------------
+# Other
+# ---------------------
+# Ignore IntelliJ run configs but allow shared settings if desired
+/.idea/*
+!/.idea/codeStyles
+
+# Local Spring Boot overrides (developer-specific, not for VCS)
+src/main/resources/application-local.properties
+src/main/resources/*.local.properties
+# Generated embedded DB files (if H2 switches to file mode)
+*.mv.db
+*.trace.db
+*.h2.db
+
+# Local upload/temp directories
+uploads/
+tmp/

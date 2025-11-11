@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnyPost-Backend - Estructura del Proyecto</title>
+    <style>
+        :root {
+            --bg-primary: #121212;
+            --bg-secondary: #1e1e1e;
+            --bg-tertiary: #2d2d2d;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent: #7c4dff;
+            --accent-light: #9c6dff;
+            --border: #404040;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --info: #2196f3;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .btn.active {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .content {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tree-container {
+            flex: 1;
+            min-width: 300px;
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            overflow: auto;
+            max-height: 70vh;
+        }
+
+        .details-panel {
+            flex: 1;
+            min-width: 300px;
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .details-panel h2 {
+            margin-bottom: 15px;
+            color: var(--accent);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .file-details {
+            background-color: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+
+        .file-details h3 {
+            margin-bottom: 10px;
+            color: var(--accent-light);
+        }
+
+        .file-details p {
+            margin-bottom: 8px;
+        }
+
+        .file-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .folder {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .folder > .folder-content {
+            margin-left: 20px;
+            display: none;
+        }
+
+        .folder.expanded > .folder-content {
+            display: block;
+        }
+
+        .folder::before {
+            content: "📁";
+            margin-right: 5px;
+        }
+
+        .folder.expanded::before {
+            content: "📂";
+        }
+
+        .file::before {
+            content: "📄";
+            margin-right: 5px;
+        }
+
+        .file.java::before {
+            content: "☕";
+        }
+
+        .file.xml::before {
+            content: "📋";
+        }
+
+        .file.md::before {
+            content: "📝";
+        }
+
+        .file.yml::before {
+            content: "⚙️";
+        }
+
+        .file.ignore::before {
+            content: "🚫";
+        }
+
+        .file.sample::before {
+            content: "🔬";
+        }
+
+        .file.cmd::before {
+            content: "🪟";
+        }
+
+        .item {
+            padding: 5px 0;
+            transition: all 0.2s ease;
+        }
+
+        .item:hover {
+            background-color: var(--bg-tertiary);
+            padding-left: 5px;
+            border-radius: 3px;
+        }
+
+        .highlight {
+            background-color: rgba(124, 77, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            .tree-container, .details-panel {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AnyPost-Backend</h1>
+            <p class="subtitle">Estructura del proyecto Maven + Spring Boot</p>
+        </header>
+
+        <div class="controls">
+            <div class="search-box">
+                <i>🔍</i>
+                <input type="text" id="search" placeholder="Buscar archivos o carpetas...">
+            </div>
+            <div class="view-toggle">
+                <button class="btn active" id="treeView">Vista Árbol</button>
+                <button class="btn" id="graphView">Vista Gráfica</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="tree-container" id="treeContainer">
+                <!-- El árbol de archivos se generará aquí con JavaScript -->
+            </div>
+            <div class="details-panel">
+                <h2>Detalles del Proyecto</h2>
+                <p>Este proyecto es una aplicación backend construida con <strong>Spring Boot</strong> y <strong>Maven</strong>.</p>
+                <p>Proporciona una API REST para gestionar contenido multimedia y publicaciones.</p>
+                
+                <div class="file-details" id="fileDetails">
+                    <h3>Selecciona un archivo o carpeta</h3>
+                    <p>Haz clic en cualquier elemento del árbol para ver sus detalles aquí.</p>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item"><span class="file-icon">📁</span> Carpeta</div>
+                    <div class="legend-item"><span class="file-icon">☕</span> Archivo Java</div>
+                    <div class="legend-item"><span class="file-icon">📋</span> Archivo XML</div>
+                    <div class="legend-item"><span class="file-icon">📝</span> Archivo Markdown</div>
+                    <div class="legend-item"><span class="file-icon">⚙️</span> Archivo Configuración</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estructura del proyecto
+        const projectStructure = {
+            name: "anypost-backend",
+            type: "folder",
+            children: [
+                {
+                    name: "mvnw",
+                    type: "file",
+                    description: "Wrapper de Maven para ejecutar sin tener Maven globalmente instalado"
+                },
+                {
+                    name: "mvnw.cmd",
+                    type: "file",
+                    class: "cmd",
+                    description: "Wrapper de Maven para Windows"
+                },
+                {
+                    name: "pom.xml",
+                    type: "file",
+                    class: "xml",
+                    description: "Configuración de dependencias (Web, JPA, Validation, H2, OpenAPI)"
+                },
+                {
+                    name: ".gitignore",
+                    type: "file",
+                    class: "ignore",
+                    description: "Ignora /target, .env, archivos temporales"
+                },
+                {
+                    name: ".env.sample",
+                    type: "file",
+                    class: "sample",
+                    description: "Variables de ejemplo (n8n, storage local)"
+                },
+                {
+                    name: "README.md",
+                    type: "file",
+                    class: "md",
+                    description: "Instrucciones para ejecutar, variables y endpoints básicos"
+                },
+                {
+                    name: "src",
+                    type: "folder",
+                    children: [
+                        {
+                            name: "main",
+                            type: "folder",
+                            children: [
+                                {
+                                    name: "java",
+                                    type: "folder",
+                                    children: [
+                                        {
+                                            name: "com",
+                                            type: "folder",
+                                            children: [
+                                                {
+                                                    name: "anypost",
+                                                    type: "folder",
+                                                    children: [
+                                                        {
+                                                            name: "AnyPostApplication.java",
+                                                            type: "file",
+                                                            class: "java",
+                                                            description: "Clase principal: arranca Spring Boot"
+                                                        },
+                                                        {
+                                                            name: "api",
+                                                            type: "folder",
+                                                            description: "Controladores REST (exponen endpoints HTTP)",
+                                                            children: [
+                                                                {
+                                                                    name: "HealthController.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "Endpoint GET /api/v1/health (estado del servicio)"
+                                                                },
+                                                                {
+                                                                    name: "UserProfileController.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "Endpoints /api/v1/me (modo dev con header) y dev-create"
+                                                                },
+                                                                {
+                                                                    name: "AssetController.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "Endpoints /api/v1/assets/* para subir/generar/listar/obtener media"
+                                                                },
+                                                                {
+                                                                    name: "PostController.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "Endpoints /api/v1/posts/* para drafts: crear/listar/detalle/actualizar/publicar"
+                                                                },
+                                                                {
+                                                                    name: "WebhookController.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "Endpoint /api/v1/webhooks/publication-status (callback de n8n)"
+                                                                },
+                                                                {
+                                                                    name: "FilesController.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "Sirve archivos locales en desarrollo GET /files/**"
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            name: "application",
+                                                            type: "folder",
+                                                            description: "Lógica de aplicación (casos de uso/servicios + DTOs)",
+                                                            children: [
+                                                                {
+                                                                    name: "services",
+                                                                    type: "folder",
+                                                                    children: [
+                                                                        {
+                                                                            name: "UserProfileService.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Crear/buscar perfil (modo dev sin Firebase)"
+                                                                        },
+                                                                        {
+                                                                            name: "AssetService.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Guarda archivo (filesystem), registra Asset y devuelve URL"
+                                                                        },
+                                                                        {
+                                                                            name: "PostService.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Gestiona borradores (validar asset, CRUD)"
+                                                                        },
+                                                                        {
+                                                                            name: "PublicationService.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Crea Job y llama a n8n; procesa resultados"
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    name: "dto",
+                                                                    type: "folder",
+                                                                    children: [
+                                                                        {
+                                                                            name: "UserProfileResponse.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Respuesta de /me"
+                                                                        },
+                                                                        {
+                                                                            name: "AssetUploadResponse.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Resultado de /assets/upload"
+                                                                        },
+                                                                        {
+                                                                            name: "AssetGenerateRequest.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Body de /assets/generate (prompt, type)"
+                                                                        },
+                                                                        {
+                                                                            name: "AssetDetailResponse.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Detalle de un asset"
+                                                                        },
+                                                                        {
+                                                                            name: "CreatePostRequest.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Body de POST /posts"
+                                                                        },
+                                                                        {
+                                                                            name: "UpdatePostRequest.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Body de PUT /posts/{id}"
+                                                                        },
+                                                                        {
+                                                                            name: "PostSummaryResponse.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Item para GET /posts"
+                                                                        },
+                                                                        {
+                                                                            name: "PublishResponse.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Respuesta de POST /posts/{id}/publish"
+                                                                        },
+                                                                        {
+                                                                            name: "WebhookPublicationStatusRequest.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Body esperado desde n8n"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            name: "domain",
+                                                            type: "folder",
+                                                            description: "Modelo de dominio (entidades, repos y enums)",
+                                                            children: [
+                                                                {
+                                                                    name: "model",
+                                                                    type: "folder",
+                                                                    children: [
+                                                                        {
+                                                                            name: "UserProfile.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Entidad usuario interno (id/email/displayName/createdAt)"
+                                                                        },
+                                                                        {
+                                                                            name: "Asset.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Entidad media (id/owner/type/source/blobUrl/createdAt)"
+                                                                        },
+                                                                        {
+                                                                            name: "PostDraft.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Borrador (title/description/assetId/targets/status/createdAt)"
+                                                                        },
+                                                                        {
+                                                                            name: "PublicationJob.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Job de publicación (postDraftId/status/requestedAt)"
+                                                                        },
+                                                                        {
+                                                                            name: "PublicationResult.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Resultado por red (network/status/url/error)"
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    name: "repository",
+                                                                    type: "folder",
+                                                                    children: [
+                                                                        {
+                                                                            name: "UserProfileRepository.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "JPA repo para perfiles"
+                                                                        },
+                                                                        {
+                                                                            name: "AssetRepository.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "JPA repo para assets"
+                                                                        },
+                                                                        {
+                                                                            name: "PostDraftRepository.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "JPA repo para borradores"
+                                                                        },
+                                                                        {
+                                                                            name: "PublicationJobRepository.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "JPA repo para jobs"
+                                                                        },
+                                                                        {
+                                                                            name: "PublicationResultRepository.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "JPA repo para resultados"
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    name: "enums",
+                                                                    type: "folder",
+                                                                    children: [
+                                                                        {
+                                                                            name: "AssetType.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "IMAGE | VIDEO"
+                                                                        },
+                                                                        {
+                                                                            name: "AssetSource.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "UPLOAD | AI"
+                                                                        },
+                                                                        {
+                                                                            name: "PostStatus.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "DRAFT | READY"
+                                                                        },
+                                                                        {
+                                                                            name: "JobStatus.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "PENDING | RUNNING | SUCCESS | FAILED | PARTIAL_SUCCESS"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            name: "infrastructure",
+                                                            type: "folder",
+                                                            description: "Integración técnica (storage local y n8n)",
+                                                            children: [
+                                                                {
+                                                                    name: "storage",
+                                                                    type: "folder",
+                                                                    children: [
+                                                                        {
+                                                                            name: "LocalFilesystemStorageConfig.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Configura carpeta raíz de uploads en dev"
+                                                                        },
+                                                                        {
+                                                                            name: "LocalFilesystemStorageService.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Guarda/borra archivos en disco y retorna paths"
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    name: "integrations",
+                                                                    type: "folder",
+                                                                    children: [
+                                                                        {
+                                                                            name: "N8nPublisherClient.java",
+                                                                            type: "file",
+                                                                            class: "java",
+                                                                            description: "Cliente HTTP para llamar al webhook de n8n"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            name: "config",
+                                                            type: "folder",
+                                                            description: "Configuración transversal del proyecto",
+                                                            children: [
+                                                                {
+                                                                    name: "CorsConfig.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "CORS abierto en dev"
+                                                                },
+                                                                {
+                                                                    name: "SwaggerConfig.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "Habilita Swagger UI (documentación automática)"
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            name: "exceptions",
+                                                            type: "folder",
+                                                            description: "Manejo de errores limpio",
+                                                            children: [
+                                                                {
+                                                                    name: "NotFoundException.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "404 de recurso no encontrado"
+                                                                },
+                                                                {
+                                                                    name: "BadRequestException.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "400 de validación"
+                                                                },
+                                                                {
+                                                                    name: "GlobalExceptionHandler.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "Traduce excepciones a JSON consistente"
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            name: "util",
+                                                            type: "folder",
+                                                            description: "Utilidades",
+                                                            children: [
+                                                                {
+                                                                    name: "Ids.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "Helpers para UUID/nombres de archivo"
+                                                                },
+                                                                {
+                                                                    name: "Time.java",
+                                                                    type: "file",
+                                                                    class: "java",
+                                                                    description: "Helpers de tiempo"
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    name: "resources",
+                                    type: "folder",
+                                    children: [
+                                        {
+                                            name: "application.yml",
+                                            type: "file",
+                                            class: "yml",
+                                            description: "Config base (H2, JPA update, H2 console)"
+                                        },
+                                        {
+                                            name: "static",
+                                            type: "folder",
+                                            description: "Estáticos (vacío; útil si sirves archivos simples)"
+                                        },
+                                        {
+                                            name: "uploads",
+                                            type: "folder",
+                                            description: "Carpeta local de medios (dev); se crea/usa por FilesystemService"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            name: "test",
+                            type: "folder",
+                            children: [
+                                {
+                                    name: "java",
+                                    type: "folder",
+                                    children: [
+                                        {
+                                            name: "com",
+                                            type: "folder",
+                                            children: [
+                                                {
+                                                    name: "anypost",
+                                                    type: "folder",
+                                                    children: [
+                                                        {
+                                                            name: "ApiSmokeTest.java",
+                                                            type: "file",
+                                                            class: "java",
+                                                            description: "Prueba rápida de /health"
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Función para crear el árbol de archivos
+        function createTree(element, data, level = 0) {
+            const item = document.createElement('div');
+            item.className = `item ${data.type} ${data.class || ''}`;
+            
+            if (data.type === 'folder') {
+                item.classList.add('folder');
+                item.innerHTML = `<span>${data.name}</span>`;
+                
+                const content = document.createElement('div');
+                content.className = 'folder-content';
+                
+                if (data.children) {
+                    data.children.forEach(child => {
+                        createTree(content, child, level + 1);
+                    });
+                }
+                
+                item.appendChild(content);
+                
+                // Toggle expandir/colapsar
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    this.classList.toggle('expanded');
+                    updateFileDetails(data);
+                });
+            } else {
+                item.classList.add('file');
+                item.innerHTML = `<span>${data.name}</span>`;
+                
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    updateFileDetails(data);
+                    
+                    // Remover highlight previo
+                    document.querySelectorAll('.highlight').forEach(el => {
+                        el.classList.remove('highlight');
+                    });
+                    
+                    // Añadir highlight al elemento seleccionado
+                    this.classList.add('highlight');
+                });
+            }
+            
+            element.appendChild(item);
+        }
+
+        // Función para actualizar los detalles del archivo
+        function updateFileDetails(data) {
+            const detailsPanel = document.getElementById('fileDetails');
+            
+            let html = `<h3>${data.name}</h3>`;
+            
+            if (data.description) {
+                html += `<p><strong>Descripción:</strong> ${data.description}</p>`;
+            }
+            
+            if (data.type === 'folder') {
+                html += `<p><strong>Tipo:</strong> Carpeta</p>`;
+            } else {
+                const extension = data.name.split('.').pop();
+                html += `<p><strong>Tipo:</strong> Archivo (${extension})</p>`;
+            }
+            
+            if (data.children && data.type === 'folder') {
+                html += `<p><strong>Contenido:</strong> ${data.children.length} elementos</p>`;
+            }
+            
+            detailsPanel.innerHTML = html;
+        }
+
+        // Función para buscar en el árbol
+        function searchTree(query) {
+            const items = document.querySelectorAll('.item');
+            
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(query.toLowerCase())) {
+                    item.style.display = 'block';
+                    
+                    // Expandir carpetas padre
+                    let parent = item.parentElement;
+                    while (parent && parent.classList.contains('folder-content')) {
+                        parent.previousElementSibling.classList.add('expanded');
+                        parent = parent.parentElement.parentElement;
+                    }
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            const treeContainer = document.getElementById('treeContainer');
+            createTree(treeContainer, projectStructure);
+            
+            // Expandir la raíz por defecto
+            treeContainer.querySelector('.folder').classList.add('expanded');
+            
+            // Configurar búsqueda
+            const searchInput = document.getElementById('search');
+            searchInput.addEventListener('input', function() {
+                searchTree(this.value);
+            });
+            
+            // Configurar botones de vista
+            const treeViewBtn = document.getElementById('treeView');
+            const graphViewBtn = document.getElementById('graphView');
+            
+            treeViewBtn.addEventListener('click', function() {
+                treeViewBtn.classList.add('active');
+                graphViewBtn.classList.remove('active');
+                // Aquí podrías cambiar a vista árbol
+            });
+            
+            graphViewBtn.addEventListener('click', function() {
+                graphViewBtn.classList.add('active');
+                treeViewBtn.classList.remove('active');
+                // Aquí podrías cambiar a vista gráfica
+                alert('La vista gráfica no está implementada en este ejemplo.');
+            });
+        });
+    </script>
+</body>
+</html>
