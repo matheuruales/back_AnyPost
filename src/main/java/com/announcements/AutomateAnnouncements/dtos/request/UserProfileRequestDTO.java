@@ -12,4 +12,7 @@ public class UserProfileRequestDTO {
 
     @NotBlank
     private String displayName;
+
+    @NotBlank
+    private String authUserId;
 }

@@ -1,17 +1,14 @@
 package com.announcements.AutomateAnnouncements.services;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.announcements.AutomateAnnouncements.dtos.request.UserProfileRequestDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.UserProfileResponseDTO;
 import com.announcements.AutomateAnnouncements.entities.UserProfile;
 import com.announcements.AutomateAnnouncements.repositories.UserProfileRepository;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 @Service
 public class UserProfileService {
@@ -24,11 +21,14 @@ public class UserProfileService {
     }
 
     public UserProfileResponseDTO create(UserProfileRequestDTO dto) {
-        UserProfile u = new UserProfile();
-        u.setEmail(dto.getEmail());
-        u.setDisplayName(dto.getDisplayName());
-        u.setCreatedAt(LocalDateTime.now());
-        UserProfile saved = userProfileRepository.save(u);
+        UserProfile profile = userProfileRepository.findByAuthUserId(dto.getAuthUserId())
+                .orElseGet(() -> userProfileRepository.findByEmail(dto.getEmail()).orElse(new UserProfile()));
+
+        profile.setEmail(dto.getEmail());
+        profile.setDisplayName(dto.getDisplayName());
+        profile.setAuthUserId(dto.getAuthUserId());
+
+        UserProfile saved = userProfileRepository.save(profile);
         return toResponse(saved);
     }
 
@@ -50,6 +50,8 @@ public class UserProfileService {
         r.setEmail(u.getEmail());
         r.setDisplayName(u.getDisplayName());
         r.setCreatedAt(u.getCreatedAt());
+        r.setUpdatedAt(u.getUpdatedAt());
+        r.setAuthUserId(u.getAuthUserId());
         return r;
     }
 }

@@ -9,4 +9,6 @@ public class UserProfileResponseDTO {
     private String email;
     private String displayName;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String authUserId;
 }
