@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -27,6 +28,14 @@ public class UserPostController {
     @GetMapping("/users/{authUserId}/posts")
     public List<UserPostResponseDTO> getPostsForUser(@PathVariable String authUserId) {
         return userPostService.getPostsForUser(authUserId);
+    }
+
+    @GetMapping("/user-posts")
+    public List<UserPostResponseDTO> findPosts(
+            @RequestParam(required = false) String authUserId,
+            @RequestParam(required = false) Integer profileId,
+            @RequestParam(required = false) String email) {
+        return userPostService.getPosts(authUserId, profileId, email);
     }
 
     @PostMapping("/users/{authUserId}/posts")

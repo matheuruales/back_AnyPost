@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -29,10 +30,39 @@ public class UserPostService {
 
     @Transactional(readOnly = true)
     public List<UserPostResponseDTO> getPostsForUser(String authUserId) {
-        return userPostRepository.findByOwnerAuthUserIdOrderByCreatedAtDesc(authUserId)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        return getPosts(authUserId, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserPostResponseDTO> getPosts(String authUserId, Integer profileId, String email) {
+        if (!StringUtils.hasText(authUserId) && profileId == null && !StringUtils.hasText(email)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    \"Provide at least one identifier (authUserId, profileId, or email)\");
+        }
+
+        List<UserPost> posts = new ArrayList<>();
+
+        if (StringUtils.hasText(authUserId)) {
+            posts = userPostRepository.findByOwnerAuthUserIdOrderByCreatedAtDesc(authUserId);
+        }
+
+        if (posts.isEmpty() && profileId != null) {
+            posts = userPostRepository.findByOwnerIdOrderByCreatedAtDesc(profileId);
+        }
+
+        if (posts.isEmpty() && StringUtils.hasText(email)) {
+            posts = userPostRepository.findByOwnerEmailIgnoreCaseOrderByCreatedAtDesc(email);
+        }
+
+        if (posts.isEmpty()) {
+            boolean profileExists = profileExists(authUserId, profileId, email);
+            if (!profileExists) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        \"User profile not found for the provided identifier(s)\");
+            }
+        }
+
+        return posts.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional
@@ -120,5 +150,18 @@ public class UserPostService {
         response.setPublishedUrl(publication.getPublishedUrl());
         response.setPublishedAt(publication.getPublishedAt());
         return response;
+    }
+
+    private boolean profileExists(String authUserId, Integer profileId, String email) {
+        if (StringUtils.hasText(authUserId) && userProfileRepository.findByAuthUserId(authUserId).isPresent()) {
+            return true;
+        }
+        if (profileId != null && userProfileRepository.existsById(profileId)) {
+            return true;
+        }
+        if (StringUtils.hasText(email)) {
+            return userProfileRepository.findByEmailIgnoreCase(email).isPresent();
+        }
+        return false;
     }
 }

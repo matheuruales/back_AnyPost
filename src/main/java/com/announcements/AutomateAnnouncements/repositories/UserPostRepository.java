@@ -12,4 +12,10 @@ public interface UserPostRepository extends JpaRepository<UserPost, UUID> {
 
     @EntityGraph(attributePaths = { "publications", "tags", "targetPlatforms" })
     List<UserPost> findByOwnerAuthUserIdOrderByCreatedAtDesc(String authUserId);
+
+    @EntityGraph(attributePaths = { "publications", "tags", "targetPlatforms" })
+    List<UserPost> findByOwnerIdOrderByCreatedAtDesc(Integer ownerId);
+
+    @EntityGraph(attributePaths = { "publications", "tags", "targetPlatforms" })
+    List<UserPost> findByOwnerEmailIgnoreCaseOrderByCreatedAtDesc(String email);
 }
