@@ -47,8 +47,13 @@ public class VideoService {
     private BlotatoVideoService blotatoVideoService;
 
     @Transactional
-    public String uploadUserVideo(MultipartFile file, String title, String description, Integer ownerId, String targets) {
-        log.info("Starting video upload process for user: {}, targets: {}", ownerId, targets);
+    public String uploadUserVideo(MultipartFile file, String title, String description, String authUserId, String targets) {
+        log.info("Starting video upload process for authUserId: {}, targets: {}", authUserId, targets);
+
+        // Get user profile by authUserId
+        UserProfile userProfile = userProfileRepository.findByAuthUserId(authUserId)
+                .orElseThrow(() -> new RuntimeException("User profile not found for authUserId: " + authUserId));
+        Integer ownerId = userProfile.getId();
 
         // Upload file to blob storage
         String videoUrl = blobStorageService.uploadFile(file);
@@ -74,9 +79,6 @@ public class VideoService {
         log.info("Post draft created with ID: {}", postDraft.getId());
 
         // Create UserPost (new system)
-        UserProfile userProfile = userProfileRepository.findById(ownerId)
-                .orElseThrow(() -> new RuntimeException("User profile not found with ID: " + ownerId));
-
         UserPostRequestDTO userPostRequest = new UserPostRequestDTO();
         userPostRequest.setTitle(title);
         userPostRequest.setContent(description);
@@ -90,7 +92,7 @@ public class VideoService {
                 .collect(Collectors.toList());
         userPostRequest.setTargetPlatforms(targetList);
 
-        UserPostResponseDTO userPost = userPostService.createPost(userProfile.getAuthUserId(), userPostRequest);
+        UserPostResponseDTO userPost = userPostService.createPost(authUserId, userPostRequest);
         log.info("UserPost created with ID: {}", userPost.getId());
 
         // Send to n8n

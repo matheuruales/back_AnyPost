@@ -38,6 +38,11 @@ public class UserPostService {
     }
 
     @Transactional(readOnly = true)
+    public List<UserPost> getAllPostsForDebug() {
+        return userPostRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
     public List<UserPostResponseDTO> getPosts(String authUserId, Integer profileId, String email) {
         log.info("Getting posts for authUserId={}, profileId={}, email={}", authUserId, profileId, email);
 

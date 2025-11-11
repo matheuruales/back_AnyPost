@@ -2,6 +2,7 @@ package com.announcements.AutomateAnnouncements.controllers;
 
 import com.announcements.AutomateAnnouncements.dtos.request.UserPostRequestDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.UserPostResponseDTO;
+import com.announcements.AutomateAnnouncements.entities.UserPost;
 import com.announcements.AutomateAnnouncements.services.UserPostService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -36,6 +37,27 @@ public class UserPostController {
             @RequestParam(required = false) Integer profileId,
             @RequestParam(required = false) String email) {
         return userPostService.getPosts(authUserId, profileId, email);
+    }
+
+    @GetMapping("/user-posts/all")
+    public ResponseEntity<?> getAllPosts() {
+        try {
+            List<UserPost> allPosts = userPostService.getAllPostsForDebug();
+            return ResponseEntity.ok(allPosts.stream()
+                    .map(post -> {
+                        var map = new java.util.HashMap<String, Object>();
+                        map.put("id", post.getId());
+                        map.put("title", post.getTitle());
+                        map.put("status", post.getStatus());
+                        map.put("ownerAuthUserId", post.getOwner() != null ? post.getOwner().getAuthUserId() : null);
+                        map.put("ownerEmail", post.getOwner() != null ? post.getOwner().getEmail() : null);
+                        map.put("createdAt", post.getCreatedAt());
+                        return map;
+                    })
+                    .collect(java.util.stream.Collectors.toList()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
     }
 
     @PostMapping("/users/{authUserId}/posts")

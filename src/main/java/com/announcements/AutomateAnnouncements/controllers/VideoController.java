@@ -41,13 +41,13 @@ public class VideoController {
             @Parameter(description = "Video file to upload") @RequestParam("file") @NotNull MultipartFile file,
             @Parameter(description = "Title of the video") @RequestParam("title") @NotBlank String title,
             @Parameter(description = "Description of the video") @RequestParam("description") String description,
-            @Parameter(description = "Owner ID") @RequestParam("ownerId") @NotNull Integer ownerId,
+            @Parameter(description = "Auth User ID from Firebase") @RequestParam("authUserId") @NotBlank String authUserId,
             @Parameter(description = "Target platforms (comma-separated)") @RequestParam("targets") @NotBlank String targets) {
 
-        log.info("Received video upload request: file={}, title={}, ownerId={}, targets={}", file.getOriginalFilename(), title, ownerId, targets);
+        log.info("Received video upload request: file={}, title={}, authUserId={}, targets={}", file.getOriginalFilename(), title, authUserId, targets);
 
         try {
-            String videoUrl = videoService.uploadUserVideo(file, title, description, ownerId, targets);
+            String videoUrl = videoService.uploadUserVideo(file, title, description, authUserId, targets);
             log.info("Video uploaded successfully: {}", videoUrl);
 
             return ResponseEntity.status(201).body("Video uploaded successfully. URL: " + videoUrl);
