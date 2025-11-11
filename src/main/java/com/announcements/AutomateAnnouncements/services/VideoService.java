@@ -8,11 +8,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.announcements.AutomateAnnouncements.dtos.response.AssetResponseDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.PostDraftResponseDTO;
+import com.announcements.AutomateAnnouncements.dtos.response.UserPostResponseDTO;
+import com.announcements.AutomateAnnouncements.dtos.request.UserPostRequestDTO;
 import com.announcements.AutomateAnnouncements.integration.BlobStorageService;
 import com.announcements.AutomateAnnouncements.integration.BlotatoVideoService;
 import com.announcements.AutomateAnnouncements.integration.N8nIntegrationService;
+import com.announcements.AutomateAnnouncements.repositories.UserProfileRepository;
+import com.announcements.AutomateAnnouncements.entities.UserProfile;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -23,6 +30,12 @@ public class VideoService {
 
     @Autowired
     private PostDraftService postDraftService;
+
+    @Autowired
+    private UserPostService userPostService;
+
+    @Autowired
+    private UserProfileRepository userProfileRepository;
 
     @Autowired
     private BlobStorageService blobStorageService;
@@ -50,7 +63,7 @@ public class VideoService {
         AssetResponseDTO asset = assetService.create(assetRequest);
         log.info("Asset created with ID: {}", asset.getId());
 
-        // Create post draft
+        // Create post draft (legacy)
         com.announcements.AutomateAnnouncements.dtos.request.PostDraftRequestDTO postDraftRequest = new com.announcements.AutomateAnnouncements.dtos.request.PostDraftRequestDTO();
         postDraftRequest.setTitle(title);
         postDraftRequest.setDescription(description);
@@ -59,6 +72,26 @@ public class VideoService {
         postDraftRequest.setStatus("pending");
         PostDraftResponseDTO postDraft = postDraftService.create(postDraftRequest);
         log.info("Post draft created with ID: {}", postDraft.getId());
+
+        // Create UserPost (new system)
+        UserProfile userProfile = userProfileRepository.findById(ownerId)
+                .orElseThrow(() -> new RuntimeException("User profile not found with ID: " + ownerId));
+
+        UserPostRequestDTO userPostRequest = new UserPostRequestDTO();
+        userPostRequest.setTitle(title);
+        userPostRequest.setContent(description);
+        userPostRequest.setVideoUrl(videoUrl);
+        userPostRequest.setStatus("published"); // Auto-publish when video is uploaded
+
+        // Parse targets into list
+        List<String> targetList = Arrays.stream(targets.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+        userPostRequest.setTargetPlatforms(targetList);
+
+        UserPostResponseDTO userPost = userPostService.createPost(userProfile.getAuthUserId(), userPostRequest);
+        log.info("UserPost created with ID: {}", userPost.getId());
 
         // Send to n8n
         n8nIntegrationService.sendVideoToN8n(title, description, videoUrl, postDraft.getTargets());
@@ -89,7 +122,7 @@ public class VideoService {
         AssetResponseDTO asset = assetService.create(assetRequest2);
         log.info("Asset created with ID: {}", asset.getId());
 
-        // Create post draft
+        // Create post draft (legacy)
         com.announcements.AutomateAnnouncements.dtos.request.PostDraftRequestDTO postDraftRequest2 = new com.announcements.AutomateAnnouncements.dtos.request.PostDraftRequestDTO();
         postDraftRequest2.setTitle(title);
         postDraftRequest2.setDescription(description);
@@ -98,6 +131,26 @@ public class VideoService {
         postDraftRequest2.setStatus("pending");
         PostDraftResponseDTO postDraft = postDraftService.create(postDraftRequest2);
         log.info("Post draft created with ID: {}", postDraft.getId());
+
+        // Create UserPost (new system)
+        UserProfile userProfile = userProfileRepository.findById(ownerId)
+                .orElseThrow(() -> new RuntimeException("User profile not found with ID: " + ownerId));
+
+        UserPostRequestDTO userPostRequest = new UserPostRequestDTO();
+        userPostRequest.setTitle(title);
+        userPostRequest.setContent(description);
+        userPostRequest.setVideoUrl(videoUrl);
+        userPostRequest.setStatus("published"); // Auto-publish generated videos
+
+        // Parse targets into list
+        List<String> targetList = Arrays.stream(targets.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+        userPostRequest.setTargetPlatforms(targetList);
+
+        UserPostResponseDTO userPost = userPostService.createPost(userProfile.getAuthUserId(), userPostRequest);
+        log.info("UserPost created with ID: {}", userPost.getId());
 
         // Send to n8n
         n8nIntegrationService.sendVideoToN8n(title, description, videoUrl, postDraft.getTargets());
