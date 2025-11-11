@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class UserPostService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserPostService.class);
 
     @Autowired
     private UserPostRepository userPostRepository;
@@ -35,6 +39,8 @@ public class UserPostService {
 
     @Transactional(readOnly = true)
     public List<UserPostResponseDTO> getPosts(String authUserId, Integer profileId, String email) {
+        log.info("Getting posts for authUserId={}, profileId={}, email={}", authUserId, profileId, email);
+
         if (!StringUtils.hasText(authUserId) && profileId == null && !StringUtils.hasText(email)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Provide at least one identifier (authUserId, profileId, or email)");
@@ -44,17 +50,21 @@ public class UserPostService {
 
         if (StringUtils.hasText(authUserId)) {
             posts = userPostRepository.findByOwnerAuthUserIdOrderByCreatedAtDesc(authUserId);
+            log.info("Found {} posts by authUserId", posts.size());
         }
 
         if (posts.isEmpty() && profileId != null) {
             posts = userPostRepository.findByOwnerIdOrderByCreatedAtDesc(profileId);
+            log.info("Found {} posts by profileId", posts.size());
         }
 
         if (posts.isEmpty() && StringUtils.hasText(email)) {
             posts = userPostRepository.findByOwnerEmailIgnoreCaseOrderByCreatedAtDesc(email);
+            log.info("Found {} posts by email", posts.size());
         }
 
         if (posts.isEmpty()) {
+            log.warn("No posts found, checking if profile exists");
             boolean profileExists = profileExists(authUserId, profileId, email);
             if (!profileExists) {
                 throw new ResponseStatusException(
@@ -62,6 +72,7 @@ public class UserPostService {
             }
         }
 
+        log.info("Returning {} posts", posts.size());
         return posts.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
