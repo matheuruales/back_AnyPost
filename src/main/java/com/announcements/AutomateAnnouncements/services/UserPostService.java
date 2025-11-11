@@ -36,8 +36,8 @@ public class UserPostService {
     @Transactional(readOnly = true)
     public List<UserPostResponseDTO> getPosts(String authUserId, Integer profileId, String email) {
         if (!StringUtils.hasText(authUserId) && profileId == null && !StringUtils.hasText(email)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    \"Provide at least one identifier (authUserId, profileId, or email)\");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Provide at least one identifier (authUserId, profileId, or email)");
         }
 
         List<UserPost> posts = new ArrayList<>();
@@ -57,8 +57,8 @@ public class UserPostService {
         if (posts.isEmpty()) {
             boolean profileExists = profileExists(authUserId, profileId, email);
             if (!profileExists) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        \"User profile not found for the provided identifier(s)\");
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User profile not found for the provided identifier(s)");
             }
         }
 
@@ -68,8 +68,8 @@ public class UserPostService {
     @Transactional
     public UserPostResponseDTO createPost(String authUserId, UserPostRequestDTO dto) {
         UserProfile owner = userProfileRepository.findByAuthUserId(authUserId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "User profile not found for the provided auth user id"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User profile not found for the provided auth user id"));
 
         UserPost post = new UserPost();
         post.setOwner(owner);
