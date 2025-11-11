@@ -9,7 +9,10 @@ import com.announcements.AutomateAnnouncements.entities.UserProfile;
 import com.announcements.AutomateAnnouncements.repositories.UserPostRepository;
 import com.announcements.AutomateAnnouncements.repositories.UserProfileRepository;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -51,24 +54,27 @@ public class UserPostService {
                     HttpStatus.BAD_REQUEST, "Provide at least one identifier (authUserId, profileId, or email)");
         }
 
-        List<UserPost> posts = new ArrayList<>();
+        Set<UserPost> aggregatedPosts = new LinkedHashSet<>();
 
         if (StringUtils.hasText(authUserId)) {
-            posts = userPostRepository.findByOwnerAuthUserIdOrderByCreatedAtDesc(authUserId);
-            log.info("Found {} posts by authUserId", posts.size());
+            List<UserPost> postsByAuth = userPostRepository.findByOwnerAuthUserIdOrderByCreatedAtDesc(authUserId);
+            aggregatedPosts.addAll(postsByAuth);
+            log.info("Found {} posts by authUserId", postsByAuth.size());
         }
 
-        if (posts.isEmpty() && profileId != null) {
-            posts = userPostRepository.findByOwnerIdOrderByCreatedAtDesc(profileId);
-            log.info("Found {} posts by profileId", posts.size());
+        if (profileId != null) {
+            List<UserPost> postsByProfile = userPostRepository.findByOwnerIdOrderByCreatedAtDesc(profileId);
+            aggregatedPosts.addAll(postsByProfile);
+            log.info("Found {} posts by profileId", postsByProfile.size());
         }
 
-        if (posts.isEmpty() && StringUtils.hasText(email)) {
-            posts = userPostRepository.findByOwnerEmailIgnoreCaseOrderByCreatedAtDesc(email);
-            log.info("Found {} posts by email", posts.size());
+        if (StringUtils.hasText(email)) {
+            List<UserPost> postsByEmail = userPostRepository.findByOwnerEmailIgnoreCaseOrderByCreatedAtDesc(email);
+            aggregatedPosts.addAll(postsByEmail);
+            log.info("Found {} posts by email", postsByEmail.size());
         }
 
-        if (posts.isEmpty()) {
+        if (aggregatedPosts.isEmpty()) {
             log.warn("No posts found, checking if profile exists");
             boolean profileExists = profileExists(authUserId, profileId, email);
             if (!profileExists) {
@@ -77,8 +83,14 @@ public class UserPostService {
             }
         }
 
-        log.info("Returning {} posts", posts.size());
-        return posts.stream().map(this::toResponse).collect(Collectors.toList());
+        List<UserPost> sortedPosts = aggregatedPosts.stream()
+                .sorted(Comparator.comparing(
+                        UserPost::getCreatedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .collect(Collectors.toList());
+
+        log.info("Returning {} posts after aggregation", sortedPosts.size());
+        return sortedPosts.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional
