@@ -90,9 +90,9 @@ public class UserPostService {
     private void applyRequestData(UserPost post, UserPostRequestDTO dto) {
         post.setTitle(dto.getTitle());
         post.setContent(dto.getContent());
-        post.setStatus(dto.getStatus() != null ? dto.getStatus() : (post.getStatus() != null ? post.getStatus() : "draft"));
+        post.setStatus(dto.getStatus() != null ? dto.getStatus() : (post.getStatus() != null ? post.getStatus() : "published"));
         post.setVideoUrl(dto.getVideoUrl());
-        post.setPublishedAt(dto.getPublishedAt());
+        post.setPublishedAt(dto.getPublishedAt() != null ? dto.getPublishedAt() : java.time.LocalDateTime.now());
         post.setTags(sanitizeList(dto.getTags()));
         post.setTargetPlatforms(sanitizeList(dto.getTargetPlatforms()));
 
@@ -102,9 +102,9 @@ public class UserPostService {
                 UserPostPublication publication = new UserPostPublication();
                 publication.setPost(post);
                 publication.setNetwork(pubDto.getNetwork());
-                publication.setStatus(pubDto.getStatus());
+                publication.setStatus(pubDto.getStatus() != null ? pubDto.getStatus() : "published");
                 publication.setPublishedUrl(pubDto.getPublishedUrl());
-                publication.setPublishedAt(pubDto.getPublishedAt());
+                publication.setPublishedAt(pubDto.getPublishedAt() != null ? pubDto.getPublishedAt() : java.time.LocalDateTime.now());
                 post.getPublications().add(publication);
             });
         }

@@ -45,6 +45,13 @@ public class UserPostPublication {
 
     @PrePersist
     public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        if (this.status == null) {
+            this.status = "published";
+        }
+        if (this.publishedAt == null) {
+            this.publishedAt = now;
+        }
     }
 }

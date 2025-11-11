@@ -78,7 +78,10 @@ public class UserPost {
         this.createdAt = now;
         this.updatedAt = now;
         if (this.status == null) {
-            this.status = "draft";
+            this.status = "published";
+        }
+        if (this.publishedAt == null) {
+            this.publishedAt = now;
         }
     }
 
@@ -86,7 +89,7 @@ public class UserPost {
     public void onUpdate() {
         this.updatedAt = LocalDateTime.now();
         if (this.status == null) {
-            this.status = "draft";
+            this.status = "published";
         }
     }
 }
