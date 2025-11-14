@@ -29,10 +29,10 @@ jobs:
           ${{ runner.os }}-m2-
 
     - name: Build with Maven
-      run: mvnw -B -DskipTests=false package
+      run: ./mvnw -B -DskipTests=false package
 
     - name: Run tests
-      run: mvnw test
+      run: ./mvnw test
 
     # Uncomment and configure the steps below to deploy to Azure App Service
     # - name: 'Login via Azure CLI'
