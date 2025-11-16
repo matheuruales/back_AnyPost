@@ -13,7 +13,7 @@ public interface VideoGenerationJobRepository extends JpaRepository<VideoGenerat
 
     List<VideoGenerationJob> findByStatusIn(List<String> statuses);
 
-    List<VideoGenerationJob> findByOwnerIdAndStatus(Integer ownerId, String status);
+    List<VideoGenerationJob> findByOwnerId(Integer ownerId);
 
     @Query("SELECT j FROM VideoGenerationJob j WHERE j.status IN :statuses ORDER BY j.createdAt ASC")
     List<VideoGenerationJob> findPendingJobs(@Param("statuses") List<String> statuses);
