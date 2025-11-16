@@ -24,6 +24,10 @@ public class UserProfile {
     private String authUserId;
     
     private String displayName;
+    @Column(name = "password_hash")
+    private String passwordHash;
+    @Column
+    private String role = "ROLE_USER";
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
