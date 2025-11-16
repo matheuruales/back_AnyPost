@@ -7,7 +7,9 @@ import com.announcements.AutomateAnnouncements.repositories.UserProfileRepositor
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,6 +17,8 @@ public class UserProfileService {
 
     @Autowired
     private UserProfileRepository userProfileRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public List<UserProfileResponseDTO> getAll() {
         return userProfileRepository.findAll().stream().map(this::toResponse).collect(Collectors.toList());
@@ -26,7 +30,15 @@ public class UserProfileService {
 
         profile.setEmail(dto.getEmail());
         profile.setDisplayName(dto.getDisplayName());
-        profile.setAuthUserId(dto.getAuthUserId());
+        if (profile.getAuthUserId() == null) {
+            profile.setAuthUserId(dto.getAuthUserId() != null ? dto.getAuthUserId() : UUID.randomUUID().toString());
+        }
+        if (profile.getPasswordHash() == null) {
+            profile.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+        }
+        if (profile.getRole() == null) {
+            profile.setRole("ROLE_USER");
+        }
 
         UserProfile saved = userProfileRepository.save(profile);
         return toResponse(saved);
@@ -44,7 +56,7 @@ public class UserProfileService {
         return false;
     }
 
-    private UserProfileResponseDTO toResponse(UserProfile u) {
+    public UserProfileResponseDTO toResponse(UserProfile u) {
         UserProfileResponseDTO r = new UserProfileResponseDTO();
         r.setId(u.getId());
         r.setEmail(u.getEmail());
