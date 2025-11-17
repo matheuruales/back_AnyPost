@@ -47,8 +47,15 @@ public class VideoGenerationWorker {
     private void processJob(VideoGenerationJob job) {
         log.info("Processing job {} with Blotato creation ID: {}", job.getId(), job.getBlotatoCreationId());
 
+        String creationId = job.getBlotatoCreationId();
+        if (creationId == null || creationId.isBlank()) {
+            log.error("Job {} does not have a valid Blotato creation ID. Marking job as failed.", job.getId());
+            jobService.failJob(job.getId(), "Missing Blotato creation ID");
+            return;
+        }
+
         // Check status with Blotato
-        String videoUrl = blotatoVideoService.checkVideoStatus(job.getBlotatoCreationId());
+        String videoUrl = blotatoVideoService.checkVideoStatus(creationId);
 
         if (videoUrl != null) {
             // Video is ready

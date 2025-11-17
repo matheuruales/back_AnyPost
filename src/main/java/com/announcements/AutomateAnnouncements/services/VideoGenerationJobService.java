@@ -6,10 +6,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.announcements.AutomateAnnouncements.entities.VideoGenerationJob;
+import com.announcements.AutomateAnnouncements.entities.UserProfile;
 import com.announcements.AutomateAnnouncements.repositories.VideoGenerationJobRepository;
+import com.announcements.AutomateAnnouncements.repositories.UserProfileRepository;
 import com.announcements.AutomateAnnouncements.dtos.response.AssetResponseDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.PostDraftResponseDTO;
 import com.announcements.AutomateAnnouncements.integration.N8nIntegrationService;
+import com.announcements.AutomateAnnouncements.dtos.request.UserPostRequestDTO;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -24,9 +27,6 @@ public class VideoGenerationJobService {
     private VideoGenerationJobRepository jobRepository;
 
     @Autowired
-    private VideoService videoService;
-
-    @Autowired
     private AssetService assetService;
 
     @Autowired
@@ -34,6 +34,12 @@ public class VideoGenerationJobService {
 
     @Autowired
     private N8nIntegrationService n8nIntegrationService;
+
+    @Autowired
+    private UserPostService userPostService;
+
+    @Autowired
+    private UserProfileRepository userProfileRepository;
 
     @Transactional
     public VideoGenerationJob createJob(Integer ownerId, String prompt, String title,
@@ -79,6 +85,9 @@ public class VideoGenerationJobService {
         if (jobOpt.isPresent()) {
             VideoGenerationJob job = jobOpt.get();
 
+            UserProfile userProfile = userProfileRepository.findById(job.getOwnerId())
+                    .orElseThrow(() -> new RuntimeException("User profile not found with ID: " + job.getOwnerId()));
+
             // Create asset record
             com.announcements.AutomateAnnouncements.dtos.request.AssetRequestDTO assetRequest =
                 new com.announcements.AutomateAnnouncements.dtos.request.AssetRequestDTO();
@@ -103,6 +112,28 @@ public class VideoGenerationJobService {
             // Send to n8n
             n8nIntegrationService.sendVideoToN8n(
                 job.getTitle(), job.getDescription(), videoUrl, job.getTargets());
+
+            // Create UserPost entry for the generated video
+            String authUserId = userProfile.getAuthUserId();
+            if (authUserId == null || authUserId.isBlank()) {
+                throw new RuntimeException("User profile " + job.getOwnerId() + " does not have an authUserId");
+            }
+
+            UserPostRequestDTO userPostRequestDTO = new UserPostRequestDTO();
+            userPostRequestDTO.setTitle(job.getTitle());
+            userPostRequestDTO.setContent(job.getDescription());
+            userPostRequestDTO.setVideoUrl(videoUrl);
+            userPostRequestDTO.setStatus("published");
+
+            if (job.getTargets() != null && !job.getTargets().isBlank()) {
+                List<String> targets = Arrays.stream(job.getTargets().split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+                userPostRequestDTO.setTargetPlatforms(targets);
+            }
+
+            userPostService.createPost(authUserId, userPostRequestDTO);
 
             job.setVideoUrl(videoUrl);
             job.setAssetId(asset.getId());
@@ -139,6 +170,6 @@ public class VideoGenerationJobService {
     }
 
     public List<VideoGenerationJob> getJobsByOwner(Integer ownerId) {
-        return jobRepository.findByOwnerIdAndStatus(ownerId, null); // Get all jobs for owner
+        return jobRepository.findByOwnerId(ownerId);
     }
 }
