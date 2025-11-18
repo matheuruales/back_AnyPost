@@ -2,14 +2,17 @@ package com.announcements.AutomateAnnouncements.controllers;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.announcements.AutomateAnnouncements.services.VideoService;
+import com.announcements.AutomateAnnouncements.dtos.request.VideoGenerationRequest;
+import com.announcements.AutomateAnnouncements.services.MediaProcessingFacade;
 import com.announcements.AutomateAnnouncements.services.VideoGenerationJobService;
-import com.announcements.AutomateAnnouncements.integration.BlotatoVideoService;
+import com.announcements.AutomateAnnouncements.entities.UserProfile;
 import com.announcements.AutomateAnnouncements.entities.VideoGenerationJob;
+import com.announcements.AutomateAnnouncements.security.AuthenticatedUserService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,6 +22,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Slf4j
 @RestController
@@ -27,13 +31,13 @@ import java.util.Optional;
 public class VideoController {
 
     @Autowired
-    private VideoService videoService;
+    private MediaProcessingFacade mediaProcessingFacade;
 
     @Autowired
     private VideoGenerationJobService videoGenerationJobService;
 
     @Autowired
-    private BlotatoVideoService blotatoVideoService;
+    private AuthenticatedUserService authenticatedUserService;
 
     @PostMapping("/upload")
     @Operation(summary = "Upload user video", description = "Uploads a video file, stores it in blob storage, creates database records, and sends data to n8n")
@@ -47,7 +51,12 @@ public class VideoController {
         log.info("Received video upload request: file={}, title={}, authUserId={}, targets={}", file.getOriginalFilename(), title, authUserId, targets);
 
         try {
-            String videoUrl = videoService.uploadUserVideo(file, title, description, authUserId, targets);
+            UserProfile currentUser = authenticatedUserService.getCurrentUser();
+            if (!currentUser.getAuthUserId().equals(authUserId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only upload videos for your own profile");
+            }
+
+            String videoUrl = mediaProcessingFacade.uploadUserVideo(currentUser, file, title, description, targets);
             log.info("Video uploaded successfully: {}", videoUrl);
 
             return ResponseEntity.status(201).body("Video uploaded successfully. URL: " + videoUrl);
@@ -70,15 +79,20 @@ public class VideoController {
         log.info("Received async video generation request: prompt={}, title={}, ownerId={}, targets={}, style={}", prompt, title, ownerId, targets, style);
 
         try {
-            // Create async job
-            VideoGenerationJob job = videoGenerationJobService.createJob(ownerId, prompt, title, description, targets, style);
+            UserProfile currentUser = authenticatedUserService.getCurrentUser();
+            if (!currentUser.getId().equals(ownerId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only generate videos for your profile");
+            }
 
-            // Start Blotato generation
-            String blotatoCreationId = blotatoVideoService.createVideoCreation(prompt, style != null ? style : "cinematic");
+            VideoGenerationRequest request = VideoGenerationRequest.builder()
+                    .withPrompt(prompt)
+                    .withTitle(title)
+                    .withDescription(description)
+                    .withTargets(targets)
+                    .withStyle(style)
+                    .build();
 
-            // Update job with Blotato ID
-            videoGenerationJobService.updateJobStatus(job.getId(), "PROCESSING", blotatoCreationId);
-
+            VideoGenerationJob job = mediaProcessingFacade.enqueueVideoGeneration(currentUser, request);
             log.info("Created async video generation job with ID: {}", job.getId());
 
             return ResponseEntity.status(202).body("Video generation job created. Job ID: " + job.getId());
@@ -91,6 +105,7 @@ public class VideoController {
     @GetMapping("/jobs/{jobId}")
     @Operation(summary = "Get job status", description = "Check the status of a video generation job")
     public ResponseEntity<?> getJobStatus(@Parameter(description = "Job ID") @PathVariable Integer jobId) {
+        UserProfile currentUser = authenticatedUserService.getCurrentUser();
         var jobOpt = videoGenerationJobService.getJobById(jobId);
 
         if (jobOpt.isEmpty()) {
@@ -98,6 +113,9 @@ public class VideoController {
         }
 
         var job = jobOpt.get();
+        if (!job.getOwnerId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Job does not belong to the current user");
+        }
         Map<String, Object> response = new HashMap<>();
         response.put("jobId", job.getId());
         response.put("status", job.getStatus());
