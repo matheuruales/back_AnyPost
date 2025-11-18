@@ -1,6 +1,12 @@
 package com.announcements.AutomateAnnouncements.controllers;
 
 import lombok.extern.slf4j.Slf4j;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -8,20 +14,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.List;
 
 @Slf4j
 @Controller
 @RequestMapping("/api/videos")
 public class BlobProxyController {
+
+    @Value("${azure.blob.container-name:}")
+    private String containerName;
 
     @GetMapping(path = "/stream")
     public ResponseEntity<StreamingResponseBody> streamBlob(
@@ -29,8 +33,25 @@ public class BlobProxyController {
             @RequestHeader(value = "Range", required = false) String rangeHeader) {
 
         try {
-            URL url = new URL(blobUrl);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            URI uri = URI.create(blobUrl);
+            if (!"https".equalsIgnoreCase(uri.getScheme())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only HTTPS blob URLs are allowed");
+            }
+
+            String host = uri.getHost();
+            if (host == null || !host.endsWith(".blob.core.windows.net")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid blob host");
+            }
+
+            if (containerName != null && !containerName.isBlank()) {
+                String path = uri.getPath();
+                String expectedPrefix = "/" + containerName + "/";
+                if (path == null || !path.startsWith(expectedPrefix)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Blob URL does not belong to the configured container");
+                }
+            }
+
+            HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(30000);
             conn.setRequestMethod("GET");
