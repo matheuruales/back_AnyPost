@@ -11,7 +11,7 @@ import com.announcements.AutomateAnnouncements.repositories.VideoGenerationJobRe
 import com.announcements.AutomateAnnouncements.repositories.UserProfileRepository;
 import com.announcements.AutomateAnnouncements.dtos.response.AssetResponseDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.PostDraftResponseDTO;
-import com.announcements.AutomateAnnouncements.integration.N8nIntegrationService;
+import com.announcements.AutomateAnnouncements.services.listeners.VideoJobEventPublisher;
 import com.announcements.AutomateAnnouncements.dtos.request.UserPostRequestDTO;
 
 import java.time.LocalDateTime;
@@ -33,7 +33,7 @@ public class VideoGenerationJobService {
     private PostDraftService postDraftService;
 
     @Autowired
-    private N8nIntegrationService n8nIntegrationService;
+    private VideoJobEventPublisher jobEventPublisher;
 
     @Autowired
     private UserPostService userPostService;
@@ -109,10 +109,6 @@ public class VideoGenerationJobService {
 
             PostDraftResponseDTO postDraft = postDraftService.create(postDraftRequest);
 
-            // Send to n8n
-            n8nIntegrationService.sendVideoToN8n(
-                job.getTitle(), job.getDescription(), videoUrl, job.getTargets());
-
             // Create UserPost entry for the generated video
             String authUserId = userProfile.getAuthUserId();
             if (authUserId == null || authUserId.isBlank()) {
@@ -144,6 +140,7 @@ public class VideoGenerationJobService {
 
             jobRepository.save(job);
             log.info("Completed job {} with video URL: {}", jobId, videoUrl);
+            jobEventPublisher.notifyJobCompleted(job);
         }
     }
 
@@ -158,6 +155,7 @@ public class VideoGenerationJobService {
 
             jobRepository.save(job);
             log.error("Failed job {} with error: {}", jobId, errorMessage);
+            jobEventPublisher.notifyJobFailed(job);
         }
     }
 
