@@ -6,7 +6,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.announcements.AutomateAnnouncements.entities.VideoGenerationJob;
-import com.announcements.AutomateAnnouncements.integration.BlotatoVideoService;
+import com.announcements.AutomateAnnouncements.integration.provider.AiVideoProvider;
+import com.announcements.AutomateAnnouncements.integration.provider.AiVideoProviderFactory;
 
 import java.util.List;
 
@@ -18,7 +19,7 @@ public class VideoGenerationWorker {
     private VideoGenerationJobService jobService;
 
     @Autowired
-    private BlotatoVideoService blotatoVideoService;
+    private AiVideoProviderFactory aiVideoProviderFactory;
 
     // Run every 30 seconds
     @Scheduled(fixedRate = 30000)
@@ -45,7 +46,7 @@ public class VideoGenerationWorker {
     }
 
     private void processJob(VideoGenerationJob job) {
-        log.info("Processing job {} with Blotato creation ID: {}", job.getId(), job.getBlotatoCreationId());
+        log.info("Processing job {} with creation ID: {}", job.getId(), job.getBlotatoCreationId());
 
         String creationId = job.getBlotatoCreationId();
         if (creationId == null || creationId.isBlank()) {
@@ -54,8 +55,8 @@ public class VideoGenerationWorker {
             return;
         }
 
-        // Check status with Blotato
-        String videoUrl = blotatoVideoService.checkVideoStatus(creationId);
+        AiVideoProvider provider = aiVideoProviderFactory.getAsyncProvider();
+        String videoUrl = provider.fetchVideoUrl(creationId).orElse(null);
 
         if (videoUrl != null) {
             // Video is ready

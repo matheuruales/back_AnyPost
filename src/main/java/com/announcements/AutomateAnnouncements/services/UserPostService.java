@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -38,6 +39,11 @@ public class UserPostService {
     @Transactional(readOnly = true)
     public List<UserPostResponseDTO> getPostsForUser(String authUserId) {
         return getPosts(authUserId, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserPostResponseDTO> getPostsForUser(UserProfile owner) {
+        return getPosts(owner.getAuthUserId(), owner.getId(), owner.getEmail());
     }
 
     @Transactional(readOnly = true)
@@ -94,10 +100,10 @@ public class UserPostService {
     }
 
     @Transactional
-    public UserPostResponseDTO createPost(String authUserId, UserPostRequestDTO dto) {
-        UserProfile owner = userProfileRepository.findByAuthUserId(authUserId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "User profile not found for the provided auth user id"));
+    public UserPostResponseDTO createPost(UserProfile owner, UserPostRequestDTO dto) {
+        if (owner == null || owner.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Owner profile is required");
+        }
 
         UserPost post = new UserPost();
         post.setOwner(owner);
@@ -108,11 +114,21 @@ public class UserPostService {
     }
 
     @Transactional
-    public boolean deletePost(UUID postId) {
-        return userPostRepository.findById(postId).map(post -> {
-            userPostRepository.delete(post);
-            return true;
-        }).orElse(false);
+    public boolean deletePost(UUID postId, UserProfile owner) {
+        return userPostRepository.findById(postId)
+                .filter(post -> post.getOwner() != null && post.getOwner().getId().equals(owner.getId()))
+                .map(post -> {
+                    userPostRepository.delete(post);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<UserPostResponseDTO> getPostForUser(UUID postId, UserProfile owner) {
+        return userPostRepository.findById(postId)
+                .filter(post -> post.getOwner() != null && post.getOwner().getId().equals(owner.getId()))
+                .map(this::toResponse);
     }
 
     private void applyRequestData(UserPost post, UserPostRequestDTO dto) {

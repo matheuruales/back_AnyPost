@@ -133,7 +133,7 @@ public class VideoGenerationJobService {
                 userPostRequestDTO.setTargetPlatforms(targets);
             }
 
-            userPostService.createPost(authUserId, userPostRequestDTO);
+            userPostService.createPost(userProfile, userPostRequestDTO);
 
             job.setVideoUrl(videoUrl);
             job.setAssetId(asset.getId());
