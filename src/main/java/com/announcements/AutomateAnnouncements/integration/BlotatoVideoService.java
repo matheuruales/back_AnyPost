@@ -3,6 +3,7 @@ package com.announcements.AutomateAnnouncements.integration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -17,6 +18,8 @@ public class BlotatoVideoService {
     private final String apiKey;
     private final String baseUrl;
     private final String templateId;
+    private static final ParameterizedTypeReference<Map<String, Object>> MAP_RESPONSE =
+            new ParameterizedTypeReference<>() {};
 
     public BlotatoVideoService(@Value("${blotato.api.key}") String apiKey,
                               @Value("${blotato.api.base-url}") String baseUrl,
@@ -74,7 +77,8 @@ public class BlotatoVideoService {
         int maxAttempts = 3;
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(url, entity, (Class) Map.class);
+                ResponseEntity<Map<String, Object>> response =
+                        restTemplate.exchange(url, HttpMethod.POST, entity, MAP_RESPONSE);
 
                 log.debug("Blotato create response status: {}", response.getStatusCode());
                 log.debug("Blotato create response headers: {}", response.getHeaders());
@@ -87,10 +91,10 @@ public class BlotatoVideoService {
                     Object creationId = null;
                     if (body.get("id") != null) {
                         creationId = body.get("id");
-                    } else if (body.get("item") instanceof Map) {
-                        creationId = ((Map<String, Object>) body.get("item")).get("id");
-                    } else if (body.get("data") instanceof Map) {
-                        creationId = ((Map<String, Object>) body.get("data")).get("id");
+                    } else if (body.get("item") instanceof Map<?, ?> item) {
+                        creationId = item.get("id");
+                    } else if (body.get("data") instanceof Map<?, ?> data) {
+                        creationId = data.get("id");
                     }
 
                     // Fallback: try Location header (if present)
@@ -147,28 +151,29 @@ public class BlotatoVideoService {
         while (attempt < maxAttempts) {
             try {
                 log.debug("Checking video status for creation ID: {} (attempt {})", creationId, attempt + 1);
-                ResponseEntity<Map<String, Object>> response = restTemplate.exchange(statusUrl, HttpMethod.GET, entity, (Class) Map.class);
+                ResponseEntity<Map<String, Object>> response =
+                        restTemplate.exchange(statusUrl, HttpMethod.GET, entity, MAP_RESPONSE);
 
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                     Map<String, Object> body = response.getBody();
 
                     // Extract status from root or nested item
                     String status = null;
-                    if (body.get("status") instanceof String) {
-                        status = (String) body.get("status");
-                    } else if (body.get("item") instanceof Map) {
-                        Object s = ((Map<String, Object>) body.get("item")).get("status");
-                        if (s instanceof String) status = (String) s;
+                    if (body.get("status") instanceof String s) {
+                        status = s;
+                    } else if (body.get("item") instanceof Map<?, ?> item) {
+                        Object innerStatus = item.get("status");
+                        if (innerStatus instanceof String s) status = s;
                     }
 
                     if ("completed".equals(status)) {
                         // Try multiple keys for video URL
                         String videoUrl = null;
                         if (body.get("videoUrl") instanceof String) videoUrl = (String) body.get("videoUrl");
-                        else if (body.get("item") instanceof Map && ((Map<String, Object>) body.get("item")).get("videoUrl") instanceof String)
-                            videoUrl = (String) ((Map<String, Object>) body.get("item")).get("videoUrl");
-                        else if (body.get("item") instanceof Map && ((Map<String, Object>) body.get("item")).get("resultUrl") instanceof String)
-                            videoUrl = (String) ((Map<String, Object>) body.get("item")).get("resultUrl");
+                        else if (body.get("item") instanceof Map<?, ?> item && item.get("videoUrl") instanceof String)
+                            videoUrl = (String) item.get("videoUrl");
+                        else if (body.get("item") instanceof Map<?, ?> item && item.get("resultUrl") instanceof String)
+                            videoUrl = (String) item.get("resultUrl");
 
                         if (videoUrl != null) {
                             return videoUrl;
@@ -204,17 +209,20 @@ public class BlotatoVideoService {
         HttpEntity<?> entity = new HttpEntity<>(headers);
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(statusUrl, HttpMethod.GET, entity, Map.class);
+            ResponseEntity<Map<String, Object>> response =
+                    restTemplate.exchange(statusUrl, HttpMethod.GET, entity, MAP_RESPONSE);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> body = response.getBody();
-                String status = (String) body.get("status");
+                String status = extractStatus(body);
 
                 if ("completed".equals(status)) {
-                    String videoUrl = (String) body.get("videoUrl");
+                    String videoUrl = extractVideoUrl(body);
                     if (videoUrl != null) {
                         return videoUrl;
                     }
+                } else if ("failed".equals(status)) {
+                    throw new RuntimeException("Video generation failed on Blotato side");
                 }
             }
         } catch (Exception e) {
@@ -222,5 +230,32 @@ public class BlotatoVideoService {
         }
 
         return null; // Not ready yet or error
+    }
+
+    private String extractStatus(Map<String, Object> body) {
+        if (body.get("status") instanceof String status) {
+            return status;
+        }
+        if (body.get("item") instanceof Map<?, ?> item && item.get("status") instanceof String status) {
+            return status;
+        }
+        return null;
+    }
+
+    private String extractVideoUrl(Map<String, Object> body) {
+        if (body.get("videoUrl") instanceof String url) {
+            return url;
+        }
+        if (body.get("item") instanceof Map<?, ?> item) {
+            Object directUrl = item.get("videoUrl");
+            if (directUrl instanceof String url) {
+                return url;
+            }
+            Object resultUrl = item.get("resultUrl");
+            if (resultUrl instanceof String url) {
+                return url;
+            }
+        }
+        return null;
     }
 }
