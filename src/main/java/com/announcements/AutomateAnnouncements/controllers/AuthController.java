@@ -2,9 +2,13 @@ package com.announcements.AutomateAnnouncements.controllers;
 
 import com.announcements.AutomateAnnouncements.dtos.request.AuthLoginRequestDTO;
 import com.announcements.AutomateAnnouncements.dtos.request.AuthRegisterRequestDTO;
+import com.announcements.AutomateAnnouncements.dtos.request.ForgotPasswordRequestDTO;
+import com.announcements.AutomateAnnouncements.dtos.request.ResetPasswordRequestDTO;
+import com.announcements.AutomateAnnouncements.dtos.request.VerifyResetCodeRequestDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.AuthResponseDTO;
 import com.announcements.AutomateAnnouncements.security.AuthenticatedUserService;
 import com.announcements.AutomateAnnouncements.services.AuthService;
+import com.announcements.AutomateAnnouncements.services.PasswordResetService;
 import com.announcements.AutomateAnnouncements.services.UserProfileService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,14 +25,17 @@ public class AuthController {
     private final AuthService authService;
     private final AuthenticatedUserService authenticatedUserService;
     private final UserProfileService userProfileService;
+    private final PasswordResetService passwordResetService;
 
     @Autowired
     public AuthController(AuthService authService,
                           AuthenticatedUserService authenticatedUserService,
-                          UserProfileService userProfileService) {
+                          UserProfileService userProfileService,
+                          PasswordResetService passwordResetService) {
         this.authService = authService;
         this.authenticatedUserService = authenticatedUserService;
         this.userProfileService = userProfileService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/register")
@@ -50,5 +57,24 @@ public class AuthController {
                 .token(null)
                 .user(userProfileService.toResponse(user))
                 .build());
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
+        log.info("Received forgot password request for {}", request.getEmail());
+        passwordResetService.sendResetCode(request.getEmail());
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<Void> verifyResetCode(@Valid @RequestBody VerifyResetCodeRequestDTO request) {
+        passwordResetService.verifyCode(request.getEmail(), request.getCode());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
+        passwordResetService.resetPassword(request.getEmail(), request.getCode(), request.getNewPassword());
+        return ResponseEntity.ok().build();
     }
 }
