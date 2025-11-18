@@ -30,7 +30,7 @@ public class CorsConfig {
 
     public CorsConfig(
             @Value("${app.cors.allowed-origins:*}") String allowedOriginsProperty,
-            @Value("${app.cors.allow-credentials:false}") boolean allowCredentials) {
+            @Value("${app.cors.allow-credentials:true}") boolean allowCredentials) {
         this.allowedOrigins = Arrays.stream(allowedOriginsProperty.split(","))
                 .map(String::trim)
                 .filter(StringUtils::hasText)
@@ -77,7 +77,7 @@ public class CorsConfig {
         configuration.setAllowedHeaders(ALLOWED_HEADERS);
         configuration.setExposedHeaders(EXPOSED_HEADERS);
         configuration.setAllowedOriginPatterns(allowedOrigins.isEmpty() ? List.of("*") : allowedOrigins);
-        configuration.setAllowCredentials(allowCredentials);
+        configuration.setAllowCredentials(true);
 
         return configuration;
     }
