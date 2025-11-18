@@ -40,7 +40,7 @@ public class PasswordResetService {
     @Transactional
     public void sendResetCode(String email) {
         UserProfile user = userProfileRepository.findByEmailIgnoreCase(email.trim())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No existe una cuenta con ese correo"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no registrado con ese correo"));
 
         // invalidate previous pending tokens to avoid reuse
         List<PasswordResetToken> activeTokens = passwordResetTokenRepository.findByUserProfileAndUsedFalse(user);
