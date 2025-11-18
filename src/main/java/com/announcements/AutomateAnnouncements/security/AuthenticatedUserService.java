@@ -2,11 +2,11 @@ package com.announcements.AutomateAnnouncements.security;
 
 import com.announcements.AutomateAnnouncements.entities.UserProfile;
 import com.announcements.AutomateAnnouncements.repositories.UserProfileRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 @Component
 public class AuthenticatedUserService {
@@ -26,5 +26,10 @@ public class AuthenticatedUserService {
         String email = authentication.getName();
         return userProfileRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+    }
+
+    public boolean currentUserHasRole(String role) {
+        UserProfile user = getCurrentUser();
+        return role != null && role.equalsIgnoreCase(user.getRole());
     }
 }
