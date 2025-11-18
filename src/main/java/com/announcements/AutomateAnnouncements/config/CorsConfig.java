@@ -70,6 +70,14 @@ public class CorsConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
+                // Auth endpoints: open to any origin (no credentials) so password recovery works even if CORS env is misconfigured.
+                registry.addMapping("/api/auth/**")
+                        .allowedOriginPatterns("*")
+                        .allowedMethods(ALLOWED_METHODS.toArray(new String[0]))
+                        .allowedHeaders(ALLOWED_HEADERS.toArray(new String[0]))
+                        .exposedHeaders(EXPOSED_HEADERS.toArray(new String[0]))
+                        .allowCredentials(false);
+
                 var mapping = registry.addMapping("/api/**")
                         .allowedMethods(ALLOWED_METHODS.toArray(new String[0]))
                         .allowedHeaders(ALLOWED_HEADERS.toArray(new String[0]))
