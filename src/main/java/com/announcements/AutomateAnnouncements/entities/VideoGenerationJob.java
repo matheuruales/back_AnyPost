@@ -1,11 +1,11 @@
 package com.announcements.AutomateAnnouncements.entities;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Column;
-import java.time.LocalDateTime;
 import lombok.Data;
 
 @Entity
@@ -36,7 +36,7 @@ public class VideoGenerationJob {
     private LocalDateTime updatedAt;
     private LocalDateTime completedAt;
 
-    // Asset and PostDraft IDs when completed
+    // Asset and PostDraft IDs when completeddd
     private Integer assetId;
     private Integer postDraftId;
 }
