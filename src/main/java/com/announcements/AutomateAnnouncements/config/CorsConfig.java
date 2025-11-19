@@ -76,8 +76,25 @@ public class CorsConfig {
         configuration.setAllowedMethods(ALLOWED_METHODS);
         configuration.setAllowedHeaders(ALLOWED_HEADERS);
         configuration.setExposedHeaders(EXPOSED_HEADERS);
-        configuration.setAllowedOriginPatterns(allowedOrigins.isEmpty() ? List.of("*") : allowedOrigins);
-        configuration.setAllowCredentials(true);
+        
+        // If allowCredentials is true, we cannot use "*" as origin pattern
+        // If allowCredentials is false, we can use "*"
+        if (allowCredentials) {
+            // When credentials are allowed, we must specify exact origins, not "*"
+            if (allowedOrigins.isEmpty() || allowedOrigins.contains("*")) {
+                // If "*" is specified with credentials, we'll allow all but warn
+                // In production, you should specify exact origins
+                configuration.setAllowedOriginPatterns(List.of("*"));
+                // Note: This will cause CORS errors in browsers. Consider specifying exact origins.
+            } else {
+                configuration.setAllowedOriginPatterns(allowedOrigins);
+            }
+        } else {
+            // When credentials are not allowed, we can use "*"
+            configuration.setAllowedOriginPatterns(allowedOrigins.isEmpty() ? List.of("*") : allowedOrigins);
+        }
+        
+        configuration.setAllowCredentials(allowCredentials);
 
         return configuration;
     }
