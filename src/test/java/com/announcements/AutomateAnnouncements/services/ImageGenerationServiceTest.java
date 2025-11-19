@@ -1,6 +1,7 @@
 package com.announcements.AutomateAnnouncements.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -13,6 +14,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import com.announcements.AutomateAnnouncements.dtos.request.ImageGenerationRequestDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.ImageGenerationResponseDTO;
+import com.announcements.AutomateAnnouncements.integration.BlobStorageService;
 
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -36,11 +38,13 @@ class ImageGenerationServiceTest {
     @Test
     void generateImageStripsQuotesFromConfigValues() throws Exception {
         String baseUrl = mockWebServer.url("/v1").toString();
+        BlobStorageService blobStorageService = mock(BlobStorageService.class);
         ImageGenerationService service = new ImageGenerationService(
                 WebClient.builder(),
                 "  \"sk-test\"  ",
                 " '" + baseUrl + "' ",
-                "\"gpt-image-1\"");
+                "\"gpt-image-1\"",
+                blobStorageService);
 
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(200)
