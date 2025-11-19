@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.*;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Slf4j
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
@@ -39,16 +42,35 @@ public class AuthController {
         this.passwordResetService = passwordResetService;
     }
 
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        log.info("Health check endpoint called");
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "ok");
+        response.put("message", "Auth endpoint is accessible");
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDTO> register(@Valid @RequestBody AuthRegisterRequestDTO request) {
         log.info("Received register request for {}", request.getEmail());
-        return ResponseEntity.status(201).body(authService.register(request));
+        try {
+            return ResponseEntity.status(201).body(authService.register(request));
+        } catch (Exception e) {
+            log.error("Error in register endpoint", e);
+            throw e;
+        }
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody AuthLoginRequestDTO request) {
         log.info("Received login request for {}", request.getEmail());
-        return ResponseEntity.ok(authService.login(request));
+        try {
+            return ResponseEntity.ok(authService.login(request));
+        } catch (Exception e) {
+            log.error("Error in login endpoint", e);
+            throw e;
+        }
     }
 
     @GetMapping("/me")
