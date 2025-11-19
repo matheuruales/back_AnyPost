@@ -8,10 +8,20 @@ Este proyecto utiliza variables de entorno para manejar información sensible co
 2. Copia las siguientes variables y reemplaza los valores con tus credenciales reales:
 
 ```properties
-# Database Configuration
-SPRING_DATASOURCE_URL=jdbc:postgresql://postgres.railway.internal:5432/railway
+# Database Configuration (PostgreSQL en Railway)
+# IMPORTANTE: Para desarrollo local, necesitas la URL PÚBLICA de Railway PostgreSQL
+# 
+# Opción 1: URL pública de Railway (recomendado para desarrollo local)
+# Obtén la URL pública desde Railway Dashboard → PostgreSQL Service → Connect → Public Network
+# Formato: jdbc:postgresql://[host-publico]:[puerto-publico]/railway
+# Ejemplo: jdbc:postgresql://containers-us-west-xxx.railway.app:5432/railway
+#
+# Opción 2: URL interna de Railway (solo funciona DENTRO de Railway, en producción)
+# jdbc:postgresql://postgres.railway.internal:5432/railway
+#
+SPRING_DATASOURCE_URL=jdbc:postgresql://TU-HOST-PUBLICO-RAILWAY:PUERTO/railway
 SPRING_DATASOURCE_USERNAME=postgres
-SPRING_DATASOURCE_PASSWORD=tu-password-de-base-de-datos
+SPRING_DATASOURCE_PASSWORD=tu-password-de-railway
 
 # Azure Blob Storage
 AZURE_BLOB_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=anypost;AccountKey=tu-account-key;EndpointSuffix=core.windows.net
