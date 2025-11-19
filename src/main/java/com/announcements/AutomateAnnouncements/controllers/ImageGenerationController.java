@@ -17,7 +17,9 @@ import com.announcements.AutomateAnnouncements.services.ImageGenerationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/ai/images")
 @Tag(name = "AI Image Generation", description = "Endpoints para generar imágenes con IA")
@@ -42,5 +44,23 @@ public class ImageGenerationController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + result.filename() + "\"")
                 .contentType(result.contentType())
                 .body(result.data());
+    }
+
+    @PostMapping("/upload-to-blob")
+    @Operation(summary = "Subir imagen de IA a Blob Storage", description = "Descarga la imagen desde OpenAI y la sube a Azure Blob Storage, devolviendo la URL pública")
+    public ResponseEntity<String> uploadImageToBlobStorage(@RequestParam("imageUrl") String imageUrl) {
+        try {
+            log.info("Received request to upload image to blob storage: {}", imageUrl);
+            String blobUrl = imageGenerationService.uploadAiImageToBlobStorage(imageUrl);
+            log.info("Successfully uploaded image, returning blob URL: {}", blobUrl);
+            return ResponseEntity.ok(blobUrl);
+        } catch (org.springframework.web.server.ResponseStatusException e) {
+            log.error("ResponseStatusException while uploading image: status={}, message={}", 
+                    e.getStatusCode(), e.getReason(), e);
+            return ResponseEntity.status(e.getStatusCode()).body("Error al subir imagen: " + e.getReason());
+        } catch (Exception e) {
+            log.error("Unexpected error while uploading image", e);
+            return ResponseEntity.status(500).body("Error al subir imagen: " + e.getMessage());
+        }
     }
 }

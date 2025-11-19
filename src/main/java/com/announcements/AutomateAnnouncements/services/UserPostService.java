@@ -131,11 +131,23 @@ public class UserPostService {
                 .map(this::toResponse);
     }
 
+    /**
+     * Gets a post by ID for public sharing (no authentication required).
+     * Only returns posts that are published.
+     */
+    @Transactional(readOnly = true)
+    public Optional<UserPostResponseDTO> getPublicPost(UUID postId) {
+        return userPostRepository.findById(postId)
+                .filter(post -> "published".equalsIgnoreCase(post.getStatus()))
+                .map(this::toResponse);
+    }
+
     private void applyRequestData(UserPost post, UserPostRequestDTO dto) {
         post.setTitle(dto.getTitle());
         post.setContent(dto.getContent());
         post.setStatus(dto.getStatus() != null ? dto.getStatus() : (post.getStatus() != null ? post.getStatus() : "published"));
         post.setVideoUrl(dto.getVideoUrl());
+        post.setImageUrl(dto.getImageUrl());
         post.setPublishedAt(dto.getPublishedAt() != null ? dto.getPublishedAt() : java.time.LocalDateTime.now());
         post.setTags(sanitizeList(dto.getTags()));
         post.setTargetPlatforms(sanitizeList(dto.getTargetPlatforms()));
@@ -172,6 +184,7 @@ public class UserPostService {
         response.setContent(post.getContent());
         response.setStatus(post.getStatus());
         response.setVideoUrl(post.getVideoUrl());
+        response.setImageUrl(post.getImageUrl());
         response.setCreatedAt(post.getCreatedAt());
         response.setUpdatedAt(post.getUpdatedAt());
         response.setPublishedAt(post.getPublishedAt());

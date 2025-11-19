@@ -12,6 +12,7 @@ public class UserPostResponseDTO {
     private String content;
     private String status;
     private String videoUrl;
+    private String imageUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime publishedAt;

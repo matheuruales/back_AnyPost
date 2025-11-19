@@ -106,4 +106,15 @@ public class UserPostController {
         }
         return ResponseEntity.notFound().build();
     }
+
+    /**
+     * Public endpoint to view a shared post.
+     * No authentication required. Only returns published posts.
+     */
+    @GetMapping("/posts/public/{postId}")
+    public ResponseEntity<UserPostResponseDTO> getPublicPost(@PathVariable UUID postId) {
+        return userPostService.getPublicPost(postId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
 }

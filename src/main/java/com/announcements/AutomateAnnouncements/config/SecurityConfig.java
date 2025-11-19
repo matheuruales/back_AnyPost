@@ -52,6 +52,7 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**").permitAll()
                 .requestMatchers("/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/videos/stream").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/posts/public/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/").permitAll()
                 .anyRequest().authenticated()
             )

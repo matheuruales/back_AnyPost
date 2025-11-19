@@ -14,6 +14,7 @@ import com.announcements.AutomateAnnouncements.integration.BlobStorageService;
 import com.announcements.AutomateAnnouncements.integration.N8nIntegrationService;
 import com.announcements.AutomateAnnouncements.integration.provider.AiVideoProvider;
 import com.announcements.AutomateAnnouncements.entities.UserProfile;
+import com.announcements.AutomateAnnouncements.utils.MediaTypeUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -45,15 +46,19 @@ public class VideoService {
         Integer ownerId = userProfile.getId();
 
         // Upload file to blob storage
-        String videoUrl = blobStorageService.uploadFile(file);
-        log.info("Video uploaded to blob storage: {}", videoUrl);
+        String mediaUrl = blobStorageService.uploadFile(file);
+        log.info("Media file uploaded to blob storage: {}", mediaUrl);
+
+        // Detect if it's an image or video
+        String assetType = MediaTypeUtils.detectAssetType(file);
+        log.info("Detected media type: {} for file: {}", assetType, file.getOriginalFilename());
 
         // Create asset record
         com.announcements.AutomateAnnouncements.dtos.request.AssetRequestDTO assetRequest = new com.announcements.AutomateAnnouncements.dtos.request.AssetRequestDTO();
         assetRequest.setOwner(ownerId);
-        assetRequest.setType("video");
+        assetRequest.setType(assetType);
         assetRequest.setSource(file.getOriginalFilename());
-        assetRequest.setBlobUrl(videoUrl);
+        assetRequest.setBlobUrl(mediaUrl);
         AssetResponseDTO asset = assetService.create(assetRequest);
         log.info("Asset created with ID: {}", asset.getId());
 
@@ -71,8 +76,12 @@ public class VideoService {
         UserPostRequestDTO userPostRequest = new UserPostRequestDTO();
         userPostRequest.setTitle(title);
         userPostRequest.setContent(description);
-        userPostRequest.setVideoUrl(videoUrl);
-        userPostRequest.setStatus("published"); // Auto-publish when video is uploaded
+        if ("image".equals(assetType)) {
+            userPostRequest.setImageUrl(mediaUrl);
+        } else {
+            userPostRequest.setVideoUrl(mediaUrl);
+        }
+        userPostRequest.setStatus("published"); // Auto-publish when media is uploaded
 
         // Parse targets into list
         List<String> targetList = Arrays.stream(targets.split(","))
@@ -85,10 +94,10 @@ public class VideoService {
         log.info("UserPost created with ID: {}", userPost.getId());
 
         // Send to n8n
-        n8nIntegrationService.sendVideoToN8n(title, description, videoUrl, postDraft.getTargets());
-        log.info("Video data sent to n8n successfully");
+        n8nIntegrationService.sendVideoToN8n(title, description, mediaUrl, postDraft.getTargets());
+        log.info("Media data sent to n8n successfully");
 
-        return videoUrl;
+        return mediaUrl;
     }
 
     @Transactional

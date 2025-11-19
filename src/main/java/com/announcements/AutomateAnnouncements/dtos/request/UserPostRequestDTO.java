@@ -21,6 +21,9 @@ public class UserPostRequestDTO {
     @Size(max = 2048)
     private String videoUrl;
 
+    @Size(max = 2048)
+    private String imageUrl;
+
     private LocalDateTime publishedAt;
 
     private List<@Size(max = 50) String> tags;
