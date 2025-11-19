@@ -10,6 +10,7 @@ Los endpoints `/api/auth/login` y `/api/auth/register` están devolviendo **403 
 El error 403 puede ocurrir si faltan variables de entorno críticas, especialmente:
 
 - **`APPLICATION_SECURITY_JWT_SECRET`**: Si esta variable no está configurada, el servicio JWT puede fallar y causar errores 403
+- **Longitud mínima**: La clave debe tener **al menos 32 caracteres**. Si es más corta, la app ahora la hashéa para generar una llave válida y escribe un warning, pero sigue siendo obligatorio usar un valor largo y aleatorio para evitar problemas en producción.
 - **`SPRING_DATASOURCE_URL`**: Si la base de datos no está configurada, la aplicación puede no iniciar correctamente
 - **Otras variables críticas**: Ver `RAILWAY_SETUP.md` para la lista completa
 
@@ -112,4 +113,3 @@ Si el problema persiste después de estos cambios:
 - El error 403 puede venir de Spring Security antes de llegar al controlador
 - Si `APPLICATION_SECURITY_JWT_SECRET` no está configurado, el servicio JWT puede fallar al iniciar
 - Los cambios en CORS y el filtro JWT deberían permitir que los endpoints públicos funcionen incluso si hay problemas con la autenticación
-

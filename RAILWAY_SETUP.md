@@ -44,6 +44,8 @@ APPLICATION_SECURITY_JWT_SECRET=tu-very-long-secret-key-for-jwt-token-generation
 APPLICATION_SECURITY_JWT_EXPIRATION=3600000
 ```
 
+> **Importante:** el backend requiere al menos **32 caracteres** para generar la llave HMAC. Si defines un secreto más corto, ahora se generará una clave a partir de un hash SHA-256, pero verás un warning en los logs. Usa siempre un valor largo y aleatorio para evitar advertencias y reforzar la seguridad.
+
 #### Mail Configuration
 ```
 SPRING_MAIL_HOST=smtp.gmail.com
@@ -79,4 +81,3 @@ Después de configurar las variables y redesplegar, verifica que:
 - Railway usa las variables de entorno que configures en el dashboard
 - Si cambias variables, Railway redespelgará automáticamente
 - El JWT secret debe ser el mismo en todos los ambientes si quieres que los tokens funcionen entre ellos
-

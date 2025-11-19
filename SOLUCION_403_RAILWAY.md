@@ -21,6 +21,12 @@ El error 403 **más común** es por variables de entorno faltantes. Verifica est
 ```bash
 # JWT Security (MUY IMPORTANTE - sin esto, la app puede fallar)
 APPLICATION_SECURITY_JWT_SECRET=<debe ser una cadena larga, mínimo 32 caracteres>
+APPLICATION_SECURITY_JWT_EXPIRATION=3600000
+```
+
+> Si usas un valor más corto, el backend ahora lo hashéa para generar una clave de 256 bits y evitar el error 403, pero registra un warning. Aun así, cambia la variable por un secreto largo y aleatorio lo antes posible.
+
+```bash
 
 # Base de Datos
 SPRING_DATASOURCE_URL=jdbc:postgresql://postgres.railway.internal:5432/railway
@@ -190,4 +196,3 @@ Si todos estos puntos están verificados y el problema persiste, comparte:
 1. Los logs completos de Railway del último deployment
 2. La respuesta completa de `curl` (headers y cuerpo)
 3. Una captura de pantalla de las variables de entorno en Railway (oculta los valores sensibles)
-
