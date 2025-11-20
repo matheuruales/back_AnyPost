@@ -26,14 +26,22 @@ public class N8nIntegrationService {
     }
 
     public void sendVideoToN8n(String title, String description, String videoUrl, String targets) {
-        log.info("Sending video data to n8n webhook: {}", webhookUrl);
+        sendMediaToN8n(title, description, videoUrl, targets);
+    }
+
+    /**
+     * Reutilizable para cualquier medio (video o imagen) siempre que ya tengamos la URL de Blob.
+     * Mantiene exactamente el mismo JSON para n8n.
+     */
+    public void sendMediaToN8n(String title, String description, String blobUrl, String targets) {
+        log.info("Sending media data to n8n webhook: {}", webhookUrl);
 
         List<String> targetsArray = targetAudienceTranslator.toAudienceList(targets);
 
         Map<String, Object> payload = Map.of(
             "title", title,
             "description", description,
-            "blobUrl", videoUrl,
+            "blobUrl", blobUrl,
             "targets", targetsArray
         );
 

@@ -3,6 +3,7 @@ package com.announcements.AutomateAnnouncements.services;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.announcements.AutomateAnnouncements.dtos.request.ImageGenerationRequestDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.ImageGenerationResponseDTO;
+import com.announcements.AutomateAnnouncements.integration.BlobStorageService;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -31,12 +33,14 @@ public class ImageGenerationService {
 
     private final WebClient webClient;
     private final String defaultModel;
+    private final BlobStorageService blobStorageService;
 
     public ImageGenerationService(
             WebClient.Builder webClientBuilder,
             @Value("${openai.api.key}") String apiKey,
             @Value("${openai.api.base-url:https://api.openai.com/v1}") String apiBaseUrl,
-            @Value("${openai.images.model:dall-e-3}") String defaultModel) {
+            @Value("${openai.images.model:dall-e-3}") String defaultModel,
+            BlobStorageService blobStorageService) {
 
         String sanitizedApiKey = sanitizeConfigValue(apiKey);
         if (!StringUtils.hasText(sanitizedApiKey)) {
@@ -53,6 +57,7 @@ public class ImageGenerationService {
 
         String sanitizedModel = sanitizeConfigValue(defaultModel);
         this.defaultModel = StringUtils.hasText(sanitizedModel) ? sanitizedModel : "dall-e-3";
+        this.blobStorageService = blobStorageService;
 
         this.webClient = webClientBuilder
                 .baseUrl(normalizedBaseUrl)
@@ -114,15 +119,30 @@ public class ImageGenerationService {
                     "El servicio de imágenes no devolvió una URL válida.");
         }
 
+        String blobUrl = uploadImageToBlob(imageUrl);
+
         ImageGenerationResponseDTO dto = new ImageGenerationResponseDTO();
         dto.setPrompt(prompt);
         dto.setRevisedPrompt(imageData.getRevisedPrompt());
         dto.setImageUrl(imageUrl);
+        dto.setBlobUrl(blobUrl);
         dto.setSize(size);
         dto.setQuality(quality);
         dto.setStyle(style);
         dto.setGeneratedAt(LocalDateTime.now());
         return dto;
+    }
+
+    /**
+     * Descarga la imagen generada (o un data URI) y la sube a Blob Storage.
+     * Devuelve la URL del blob sin alterar el flujo actual de subida de archivos del usuario.
+     */
+    public String uploadImageToBlob(String imageUrl) {
+        DownloadedImage downloadedImage = downloadImageData(imageUrl);
+        String filename = extractFilename(downloadedImage.filenameHint(), downloadedImage.contentType());
+        String blobUrl = blobStorageService.uploadBytes(downloadedImage.data(), filename);
+        log.info("AI image uploaded to blob storage: {}", blobUrl);
+        return blobUrl;
     }
 
     public ImageProxyResult proxyImageFromUrl(String imageUrl) {
@@ -161,6 +181,78 @@ public class ImageGenerationService {
             log.error("Unexpected error downloading AI image from {}", uri, ex);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "No se pudo descargar la imagen generada. Intenta nuevamente.");
+        }
+    }
+
+    private DownloadedImage downloadImageData(String imageUrl) {
+        if (!StringUtils.hasText(imageUrl)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La URL de la imagen es obligatoria.");
+        }
+
+        if (imageUrl.startsWith("data:image")) {
+            return decodeDataUri(imageUrl);
+        }
+
+        URI uri = validateImageUrl(imageUrl);
+        try {
+            return webClient.get()
+                    .uri(uri)
+                    .accept(MediaType.APPLICATION_OCTET_STREAM)
+                    .exchangeToMono(clientResponse -> {
+                        if (clientResponse.statusCode().isError()) {
+                            return clientResponse.bodyToMono(String.class)
+                                    .defaultIfEmpty("<empty body>")
+                                    .flatMap(body -> {
+                                        log.error("Failed to download AI image: status={}, body={}",
+                                                clientResponse.statusCode(), body);
+                                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                                                "No se pudo descargar la imagen generada."));
+                                    });
+                        }
+
+                        MediaType mediaType = clientResponse.headers().contentType()
+                                .orElse(MediaType.IMAGE_PNG);
+                        String filename = extractFilename(uri.getPath(), mediaType);
+
+                        return clientResponse.bodyToMono(byte[].class)
+                                .map(bytes -> new DownloadedImage(bytes, mediaType, filename));
+                    })
+                    .blockOptional()
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                            "El servicio de imágenes no devolvió datos."));
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Unexpected error downloading AI image from {}", uri, ex);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "No se pudo descargar la imagen generada. Intenta nuevamente.");
+        }
+    }
+
+    private DownloadedImage decodeDataUri(String dataUri) {
+        try {
+            int commaIndex = dataUri.indexOf(',');
+            if (commaIndex < 0) {
+                throw new IllegalArgumentException("Data URI malformed");
+            }
+            String metadata = dataUri.substring(5, commaIndex); // strip "data:"
+            String base64 = dataUri.substring(commaIndex + 1);
+            byte[] bytes = Base64.getDecoder().decode(base64);
+
+            MediaType mediaType = MediaType.IMAGE_PNG;
+            String[] parts = metadata.split(";");
+            if (parts.length > 0 && StringUtils.hasText(parts[0])) {
+                try {
+                    mediaType = MediaType.parseMediaType(parts[0]);
+                } catch (Exception ignored) {
+                    // Default fallback remains IMAGE_PNG
+                }
+            }
+            return new DownloadedImage(bytes, mediaType, null);
+        } catch (Exception ex) {
+            log.error("Failed to decode data URI image", ex);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La imagen devuelta no es válida.");
         }
     }
 
@@ -209,6 +301,9 @@ public class ImageGenerationService {
     }
 
     public record ImageProxyResult(byte[] data, MediaType contentType, String filename) {
+    }
+
+    private record DownloadedImage(byte[] data, MediaType contentType, String filenameHint) {
     }
 
     @Data

@@ -118,6 +118,7 @@ public class UserPostService {
         response.setContent(post.getContent());
         response.setStatus(post.getStatus());
         response.setVideoUrl(post.getVideoUrl());
+        response.setImageUrl(post.getImageUrl());
         response.setCreatedAt(post.getCreatedAt());
         response.setUpdatedAt(post.getUpdatedAt());
         response.setPublishedAt(post.getPublishedAt());

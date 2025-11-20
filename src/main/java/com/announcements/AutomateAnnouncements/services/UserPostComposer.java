@@ -52,6 +52,7 @@ public class UserPostComposer {
         post.setContent(dto.getContent());
         post.setStatus(resolveStatus(dto.getStatus(), post.getStatus()));
         post.setVideoUrl(dto.getVideoUrl());
+        post.setImageUrl(dto.getImageUrl());
 
         LocalDateTime publishedAt = dto.getPublishedAt() != null
                 ? dto.getPublishedAt()

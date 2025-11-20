@@ -1,6 +1,9 @@
 package com.announcements.AutomateAnnouncements.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -13,6 +16,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import com.announcements.AutomateAnnouncements.dtos.request.ImageGenerationRequestDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.ImageGenerationResponseDTO;
+import com.announcements.AutomateAnnouncements.integration.BlobStorageService;
 
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -36,11 +40,16 @@ class ImageGenerationServiceTest {
     @Test
     void generateImageStripsQuotesFromConfigValues() throws Exception {
         String baseUrl = mockWebServer.url("/v1").toString();
+        BlobStorageService blobStorageService = mock(BlobStorageService.class);
+        when(blobStorageService.uploadBytes(any(), any()))
+                .thenReturn("https://myaccount.blob.core.windows.net/container/generated-image.png");
+
         ImageGenerationService service = new ImageGenerationService(
                 WebClient.builder(),
                 "  \"sk-test\"  ",
                 " '" + baseUrl + "' ",
-                "\"gpt-image-1\"");
+                "\"gpt-image-1\"",
+                blobStorageService);
 
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(200)
@@ -49,7 +58,7 @@ class ImageGenerationServiceTest {
                         {
                           "data": [
                             {
-                              "url": "https://cdn.example.com/img.png",
+                              "url": "data:image/png;base64,aGVsbG8=",
                               "revised_prompt": "Bike cat"
                             }
                           ]
@@ -61,7 +70,8 @@ class ImageGenerationServiceTest {
 
         ImageGenerationResponseDTO response = service.generateImage(request);
 
-        assertThat(response.getImageUrl()).isEqualTo("https://cdn.example.com/img.png");
+        assertThat(response.getImageUrl()).startsWith("data:image/png;base64,");
+        assertThat(response.getBlobUrl()).isEqualTo("https://myaccount.blob.core.windows.net/container/generated-image.png");
         assertThat(response.getRevisedPrompt()).isEqualTo("Bike cat");
 
         RecordedRequest recordedRequest = mockWebServer.takeRequest(1, TimeUnit.SECONDS);

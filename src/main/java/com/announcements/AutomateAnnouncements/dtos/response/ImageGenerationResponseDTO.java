@@ -20,4 +20,6 @@ public class ImageGenerationResponseDTO {
     private String style;
 
     private LocalDateTime generatedAt;
+
+    private String blobUrl;
 }

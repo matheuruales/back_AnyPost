@@ -49,6 +49,9 @@ public class UserPost {
     @Column(name = "video_url", length = 2048)
     private String videoUrl;
 
+    @Column(name = "image_url", length = 2048)
+    private String imageUrl;
+
     private LocalDateTime publishedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
