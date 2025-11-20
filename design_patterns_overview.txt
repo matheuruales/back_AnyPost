@@ -1,0 +1,24 @@
+Design patterns applied
+
+1) Adapter (from Adapter/Bridge example)
+- Implemented in: src/main/java/com/announcements/AutomateAnnouncements/services/TargetAudienceTranslator.java
+- Used in: UserPostComposer, VideoGenerationJobService, N8nIntegrationService
+- How: Translates legacy comma-separated target strings into the normalized list form and back, ensuring trimming and safe propagation to storage and webhooks.
+- Why: Keeps target handling consistent across services that still receive string inputs while the domain works with lists, reducing duplication and format drift.
+
+2) Builder (from Prototype/Builder example)
+- Implemented in: src/main/java/com/announcements/AutomateAnnouncements/services/UserPostComposer.java
+- Used in: UserPostService when creating posts (and mapping publications to responses)
+- How: Assembles UserPost entities in one place, applying defaults for status and timestamps, cleansing tags/targets, and rebuilding related publications.
+- Why: Centralizes post construction so controllers and services avoid manual field wiring, improving clarity and maintainability for a core domain aggregate.
+
+3) Decorator (from Decorator example)
+- Implemented in: src/main/java/com/announcements/AutomateAnnouncements/services/PublicationJobAuditTrail.java
+- Used in: PublicationJobController via the PublicationJobOperations interface
+- How: Wraps PublicationJobService to log creation, fetch, and deletion actions without changing persistence behavior.
+- Why: Adds audit-friendly tracing around publication job management while keeping the underlying repository logic untouched.
+
+4) Chain of Responsibility (extra pattern not in examples)
+- Implemented in: src/main/java/com/announcements/AutomateAnnouncements/services/UserPostService.java (AuthUserPostsStep, ProfilePostsStep, EmailPostsStep, ProfileExistenceValidationStep)
+- How: Sequential lookup steps aggregate posts by different identifiers and validate profile existence only when needed.
+- Why: Separates the search responsibilities for user posts, making it easier to extend query paths and keeping the high-traffic endpoint logic readable.

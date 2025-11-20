@@ -14,7 +14,7 @@ import com.announcements.AutomateAnnouncements.entities.PublicationJob;
 import com.announcements.AutomateAnnouncements.repositories.PublicationJobRepository;
 
 @Service
-public class PublicationJobService {
+public class PublicationJobService implements PublicationJobOperations {
 
     @Autowired
     private PublicationJobRepository publicationJobRepository;

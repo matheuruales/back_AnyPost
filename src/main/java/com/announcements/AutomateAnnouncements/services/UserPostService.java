@@ -1,10 +1,8 @@
 package com.announcements.AutomateAnnouncements.services;
 
 import com.announcements.AutomateAnnouncements.dtos.request.UserPostRequestDTO;
-import com.announcements.AutomateAnnouncements.dtos.response.PostPublicationResponseDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.UserPostResponseDTO;
 import com.announcements.AutomateAnnouncements.entities.UserPost;
-import com.announcements.AutomateAnnouncements.entities.UserPostPublication;
 import com.announcements.AutomateAnnouncements.entities.UserProfile;
 import com.announcements.AutomateAnnouncements.repositories.UserPostRepository;
 import com.announcements.AutomateAnnouncements.repositories.UserProfileRepository;
@@ -18,7 +16,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,11 +27,20 @@ public class UserPostService {
 
     private static final Logger log = LoggerFactory.getLogger(UserPostService.class);
 
-    @Autowired
-    private UserPostRepository userPostRepository;
+    private final UserPostRepository userPostRepository;
 
-    @Autowired
-    private UserProfileRepository userProfileRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final UserPostComposer userPostComposer;
+    private final UserPostLookupStep lookupChain;
+
+    public UserPostService(UserPostRepository userPostRepository,
+                           UserProfileRepository userProfileRepository,
+                           UserPostComposer userPostComposer) {
+        this.userPostRepository = userPostRepository;
+        this.userProfileRepository = userProfileRepository;
+        this.userPostComposer = userPostComposer;
+        this.lookupChain = buildLookupChain();
+    }
 
     @Transactional(readOnly = true)
     public List<UserPostResponseDTO> getPostsForUser(String authUserId) {
@@ -61,33 +67,9 @@ public class UserPostService {
         }
 
         Set<UserPost> aggregatedPosts = new LinkedHashSet<>();
+        UserPostQuery query = new UserPostQuery(authUserId, profileId, email, aggregatedPosts);
 
-        if (StringUtils.hasText(authUserId)) {
-            List<UserPost> postsByAuth = userPostRepository.findByOwnerAuthUserIdOrderByCreatedAtDesc(authUserId);
-            aggregatedPosts.addAll(postsByAuth);
-            log.info("Found {} posts by authUserId", postsByAuth.size());
-        }
-
-        if (profileId != null) {
-            List<UserPost> postsByProfile = userPostRepository.findByOwnerIdOrderByCreatedAtDesc(profileId);
-            aggregatedPosts.addAll(postsByProfile);
-            log.info("Found {} posts by profileId", postsByProfile.size());
-        }
-
-        if (StringUtils.hasText(email)) {
-            List<UserPost> postsByEmail = userPostRepository.findByOwnerEmailIgnoreCaseOrderByCreatedAtDesc(email);
-            aggregatedPosts.addAll(postsByEmail);
-            log.info("Found {} posts by email", postsByEmail.size());
-        }
-
-        if (aggregatedPosts.isEmpty()) {
-            log.warn("No posts found, checking if profile exists");
-            boolean profileExists = profileExists(authUserId, profileId, email);
-            if (!profileExists) {
-                throw new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "User profile not found for the provided identifier(s)");
-            }
-        }
+        lookupChain.process(query);
 
         List<UserPost> sortedPosts = aggregatedPosts.stream()
                 .sorted(Comparator.comparing(
@@ -105,9 +87,7 @@ public class UserPostService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Owner profile is required");
         }
 
-        UserPost post = new UserPost();
-        post.setOwner(owner);
-        applyRequestData(post, dto);
+        UserPost post = userPostComposer.composeNew(owner, dto);
 
         UserPost saved = userPostRepository.save(post);
         return toResponse(saved);
@@ -131,40 +111,6 @@ public class UserPostService {
                 .map(this::toResponse);
     }
 
-    private void applyRequestData(UserPost post, UserPostRequestDTO dto) {
-        post.setTitle(dto.getTitle());
-        post.setContent(dto.getContent());
-        post.setStatus(dto.getStatus() != null ? dto.getStatus() : (post.getStatus() != null ? post.getStatus() : "published"));
-        post.setVideoUrl(dto.getVideoUrl());
-        post.setPublishedAt(dto.getPublishedAt() != null ? dto.getPublishedAt() : java.time.LocalDateTime.now());
-        post.setTags(sanitizeList(dto.getTags()));
-        post.setTargetPlatforms(sanitizeList(dto.getTargetPlatforms()));
-
-        post.getPublications().clear();
-        if (dto.getPublications() != null) {
-            dto.getPublications().forEach(pubDto -> {
-                UserPostPublication publication = new UserPostPublication();
-                publication.setPost(post);
-                publication.setNetwork(pubDto.getNetwork());
-                publication.setStatus(pubDto.getStatus() != null ? pubDto.getStatus() : "published");
-                publication.setPublishedUrl(pubDto.getPublishedUrl());
-                publication.setPublishedAt(pubDto.getPublishedAt() != null ? pubDto.getPublishedAt() : java.time.LocalDateTime.now());
-                post.getPublications().add(publication);
-            });
-        }
-    }
-
-    private List<String> sanitizeList(List<String> values) {
-        if (values == null || values.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        return values.stream()
-                .map(value -> value != null ? value.trim() : null)
-                .filter(value -> value != null && !value.isEmpty())
-                .collect(Collectors.toList());
-    }
-
     private UserPostResponseDTO toResponse(UserPost post) {
         UserPostResponseDTO response = new UserPostResponseDTO();
         response.setId(post.getId());
@@ -180,32 +126,154 @@ public class UserPostService {
         response.setTargetPlatforms(post.getTargetPlatforms() != null ? new ArrayList<>(post.getTargetPlatforms()) : new ArrayList<>());
         response.setPublications(post.getPublications() != null
                 ? post.getPublications().stream()
-                        .map(this::toPublicationResponse)
+                        .map(userPostComposer::toPublicationResponse)
                         .collect(Collectors.toList())
                 : new ArrayList<>());
         return response;
     }
 
-    private PostPublicationResponseDTO toPublicationResponse(UserPostPublication publication) {
-        PostPublicationResponseDTO response = new PostPublicationResponseDTO();
-        response.setId(publication.getId());
-        response.setNetwork(publication.getNetwork());
-        response.setStatus(publication.getStatus());
-        response.setPublishedUrl(publication.getPublishedUrl());
-        response.setPublishedAt(publication.getPublishedAt());
-        return response;
+    private UserPostLookupStep buildLookupChain() {
+        UserPostLookupStep authStep = new AuthUserPostsStep(userPostRepository);
+        UserPostLookupStep profileStep = authStep.linkNext(new ProfilePostsStep(userPostRepository));
+        UserPostLookupStep emailStep = profileStep.linkNext(new EmailPostsStep(userPostRepository));
+        emailStep.linkNext(new ProfileExistenceValidationStep(userProfileRepository));
+        return authStep;
     }
 
-    private boolean profileExists(String authUserId, Integer profileId, String email) {
-        if (StringUtils.hasText(authUserId) && userProfileRepository.findByAuthUserId(authUserId).isPresent()) {
-            return true;
+    private static final class UserPostQuery {
+        private final String authUserId;
+        private final Integer profileId;
+        private final String email;
+        private final Set<UserPost> aggregatedPosts;
+
+        private UserPostQuery(String authUserId, Integer profileId, String email, Set<UserPost> aggregatedPosts) {
+            this.authUserId = authUserId;
+            this.profileId = profileId;
+            this.email = email;
+            this.aggregatedPosts = aggregatedPosts;
         }
-        if (profileId != null && userProfileRepository.existsById(profileId)) {
-            return true;
+
+        private String getAuthUserId() {
+            return authUserId;
         }
-        if (StringUtils.hasText(email)) {
-            return userProfileRepository.findByEmailIgnoreCase(email).isPresent();
+
+        private Integer getProfileId() {
+            return profileId;
         }
-        return false;
+
+        private String getEmail() {
+            return email;
+        }
+
+        private Set<UserPost> getAggregatedPosts() {
+            return aggregatedPosts;
+        }
+    }
+
+    private abstract static class UserPostLookupStep {
+        private UserPostLookupStep next;
+
+        public final void process(UserPostQuery query) {
+            handle(query);
+            if (next != null) {
+                next.process(query);
+            }
+        }
+
+        public UserPostLookupStep linkNext(UserPostLookupStep nextStep) {
+            this.next = nextStep;
+            return nextStep;
+        }
+
+        protected abstract void handle(UserPostQuery query);
+    }
+
+    private static final class AuthUserPostsStep extends UserPostLookupStep {
+        private final UserPostRepository repository;
+
+        private AuthUserPostsStep(UserPostRepository repository) {
+            this.repository = repository;
+        }
+
+        @Override
+        protected void handle(UserPostQuery query) {
+            if (!StringUtils.hasText(query.getAuthUserId())) {
+                return;
+            }
+            List<UserPost> postsByAuth = repository.findByOwnerAuthUserIdOrderByCreatedAtDesc(query.getAuthUserId());
+            query.getAggregatedPosts().addAll(postsByAuth);
+            log.info("Found {} posts by authUserId", postsByAuth.size());
+        }
+    }
+
+    private static final class ProfilePostsStep extends UserPostLookupStep {
+        private final UserPostRepository repository;
+
+        private ProfilePostsStep(UserPostRepository repository) {
+            this.repository = repository;
+        }
+
+        @Override
+        protected void handle(UserPostQuery query) {
+            if (query.getProfileId() == null) {
+                return;
+            }
+            List<UserPost> postsByProfile = repository.findByOwnerIdOrderByCreatedAtDesc(query.getProfileId());
+            query.getAggregatedPosts().addAll(postsByProfile);
+            log.info("Found {} posts by profileId", postsByProfile.size());
+        }
+    }
+
+    private static final class EmailPostsStep extends UserPostLookupStep {
+        private final UserPostRepository repository;
+
+        private EmailPostsStep(UserPostRepository repository) {
+            this.repository = repository;
+        }
+
+        @Override
+        protected void handle(UserPostQuery query) {
+            if (!StringUtils.hasText(query.getEmail())) {
+                return;
+            }
+            List<UserPost> postsByEmail = repository.findByOwnerEmailIgnoreCaseOrderByCreatedAtDesc(query.getEmail());
+            query.getAggregatedPosts().addAll(postsByEmail);
+            log.info("Found {} posts by email", postsByEmail.size());
+        }
+    }
+
+    private final class ProfileExistenceValidationStep extends UserPostLookupStep {
+        private final UserProfileRepository repository;
+
+        private ProfileExistenceValidationStep(UserProfileRepository repository) {
+            this.repository = repository;
+        }
+
+        @Override
+        protected void handle(UserPostQuery query) {
+            if (!query.getAggregatedPosts().isEmpty()) {
+                return;
+            }
+
+            log.warn("No posts found, checking if profile exists");
+            boolean profileExists = profileExists(query.getAuthUserId(), query.getProfileId(), query.getEmail());
+            if (!profileExists) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User profile not found for the provided identifier(s)");
+            }
+        }
+
+        private boolean profileExists(String authUserId, Integer profileId, String email) {
+            if (StringUtils.hasText(authUserId) && repository.findByAuthUserId(authUserId).isPresent()) {
+                return true;
+            }
+            if (profileId != null && repository.existsById(profileId)) {
+                return true;
+            }
+            if (StringUtils.hasText(email)) {
+                return repository.findByEmailIgnoreCase(email).isPresent();
+            }
+            return false;
+        }
     }
 }

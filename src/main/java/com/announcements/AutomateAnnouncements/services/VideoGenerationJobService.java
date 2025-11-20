@@ -13,6 +13,7 @@ import com.announcements.AutomateAnnouncements.dtos.response.AssetResponseDTO;
 import com.announcements.AutomateAnnouncements.dtos.response.PostDraftResponseDTO;
 import com.announcements.AutomateAnnouncements.services.listeners.VideoJobEventPublisher;
 import com.announcements.AutomateAnnouncements.dtos.request.UserPostRequestDTO;
+import com.announcements.AutomateAnnouncements.services.TargetAudienceTranslator;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -40,6 +41,9 @@ public class VideoGenerationJobService {
 
     @Autowired
     private UserProfileRepository userProfileRepository;
+
+    @Autowired
+    private TargetAudienceTranslator targetAudienceTranslator;
 
     @Transactional
     public VideoGenerationJob createJob(Integer ownerId, String prompt, String title,
@@ -122,11 +126,10 @@ public class VideoGenerationJobService {
             userPostRequestDTO.setStatus("published");
 
             if (job.getTargets() != null && !job.getTargets().isBlank()) {
-                List<String> targets = Arrays.stream(job.getTargets().split(","))
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .toList();
-                userPostRequestDTO.setTargetPlatforms(targets);
+                List<String> targets = targetAudienceTranslator.toAudienceList(job.getTargets());
+                if (!targets.isEmpty()) {
+                    userPostRequestDTO.setTargetPlatforms(targets);
+                }
             }
 
             userPostService.createPost(userProfile, userPostRequestDTO);
